@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -15,6 +15,8 @@ import {
   ListItem,
   ListItemText,
   IconButton,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -25,11 +27,36 @@ import {
 } from '@mui/icons-material';
 import { useAppSelector } from '../../hooks/useRedux';
 import Navigation from '../../components/Navigation';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '../../components/ui/carousel';
 
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
   value: number;
+}
+
+interface BackendProject {
+  _id: string;
+  projectName: string;
+  projectDescription: string;
+  projectLink: string;
+  techStack: string[];
+  projectImgUrl?: string;
+  projectImgUrls?: string[];
+  projectVideoUrls?: string[];
+  demoUrl?: string;
+  category: string;
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  estimatedTime: string;
+  tags: string[];
+  user: {
+    _id: string;
+    name?: string;
+    username?: string;
+    avatar?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
 }
 
 function TabPanel(props: TabPanelProps) {
@@ -51,18 +78,68 @@ function TabPanel(props: TabPanelProps) {
 const ProjectDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [tabValue, setTabValue] = React.useState(0);
+  const [tabValue, setTabValue] = useState(0);
+  const [project, setProject] = useState<BackendProject | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  const project = useAppSelector((state) => 
-    state.projects.projects.find(p => p.id === id)
-  );
+  const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3000';
 
-  if (!project) {
+  useEffect(() => {
+    const fetchProject = async () => {
+      if (!id) {
+        setError('Project ID is required');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const response = await fetch(`${apiBase}/api/projects/${id}`);
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            setError('Project not found');
+          } else {
+            setError('Failed to fetch project');
+          }
+          return;
+        }
+        
+        const projectData = await response.json();
+        setProject(projectData);
+      } catch (err) {
+        setError('Failed to fetch project');
+        console.error('Error fetching project:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProject();
+  }, [id, apiBase]);
+
+  if (loading) {
+    return (
+      <>
+        <Navigation />
+        <Container maxWidth="lg" sx={{ py: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+          <CircularProgress />
+        </Container>
+      </>
+    );
+  }
+
+  if (error || !project) {
     return (
       <>
         <Navigation />
         <Container maxWidth="lg" sx={{ py: 4 }}>
-          <Typography variant="h4" align="center">Project not found</Typography>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error || 'Project not found'}
+          </Alert>
           <Box sx={{ textAlign: 'center', mt: 2 }}>
             <Button onClick={() => navigate('/')}>Back to Projects</Button>
           </Box>
@@ -92,10 +169,10 @@ const ProjectDetails: React.FC = () => {
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
             <Box sx={{ flexGrow: 1 }}>
               <Typography variant="h3" sx={{ fontWeight: 700, mb: 1 }}>
-                {project.title}
+                {project.projectName}
               </Typography>
               <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
-                {project.description}
+                {project.projectDescription}
               </Typography>
             </Box>
             <Button
@@ -123,21 +200,128 @@ const ProjectDetails: React.FC = () => {
             </Typography>
             <Card sx={{ mb: 3 }}>
               <CardContent>
-                <Box
-                  sx={{
-                    width: '100%',
-                    height: 400,
-                    bgcolor: 'hsl(var(--muted))',
-                    borderRadius: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Typography color="text.secondary">
-                    Project Demo Screenshot/Video
-                  </Typography>
-                </Box>
+                {(() => {
+                  // Combine images and videos into a single array for the carousel
+                  const mediaItems = [];
+                  
+                  // Add videos
+                  if (project.projectVideoUrls && project.projectVideoUrls.length > 0) {
+                    project.projectVideoUrls.forEach((videoUrl, index) => {
+                      mediaItems.push({ type: 'video', url: videoUrl, alt: `Project video ${index + 1}` });
+                    });
+                  }
+                  // Add images
+                  if (project.projectImgUrls && project.projectImgUrls.length > 0) {
+                    project.projectImgUrls.forEach((imgUrl, index) => {
+                      mediaItems.push({ type: 'image', url: imgUrl, alt: `Project screenshot ${index + 1}` });
+                    });
+                  } else if (project.projectImgUrl) {
+                    mediaItems.push({ type: 'image', url: project.projectImgUrl, alt: 'Project screenshot' });
+                  }
+                  
+                  
+                  if (mediaItems.length === 0) {
+                    return (
+                      <Box
+                        sx={{
+                          width: '100%',
+                          height: 400,
+                          bgcolor: 'hsl(var(--muted))',
+                          borderRadius: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Typography color="text.secondary">
+                          No demo media available
+                        </Typography>
+                      </Box>
+                    );
+                  }
+                  
+                  if (mediaItems.length === 1) {
+                    const item = mediaItems[0];
+                    return (
+                      <Box sx={{ position: 'relative', width: '100%', height: 400 }}>
+                        {item.type === 'image' ? (
+                          <Box
+                            component="img"
+                            src={item.url}
+                            alt={item.alt}
+                            sx={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              borderRadius: 1,
+                              border: '1px solid',
+                              borderColor: 'divider'
+                            }}
+                          />
+                        ) : (
+                          <Box
+                            component="video"
+                            src={item.url}
+                            controls
+                            sx={{
+                              width: '100%',
+                              height: '100%',
+                              borderRadius: 1,
+                              border: '1px solid',
+                              borderColor: 'divider'
+                            }}
+                          />
+                        )}
+                      </Box>
+                    );
+                  }
+                  
+                  // Multiple items - use carousel
+                  return (
+                    <Box sx={{ position: 'relative', width: '100%' }}>
+                      <Carousel className="w-full">
+                        <CarouselContent>
+                          {mediaItems.map((item, index) => (
+                            <CarouselItem key={index}>
+                              <Box sx={{ position: 'relative', width: '100%', height: 400 }}>
+                                {item.type === 'image' ? (
+                                  <Box
+                                    component="img"
+                                    src={item.url}
+                                    alt={item.alt}
+                                    sx={{
+                                      width: '100%',
+                                      height: '100%',
+                                      objectFit: 'cover',
+                                      borderRadius: 1,
+                                      border: '1px solid',
+                                      borderColor: 'divider'
+                                    }}
+                                  />
+                                ) : (
+                                  <Box
+                                    component="video"
+                                    src={item.url}
+                                    controls
+                                    sx={{
+                                      width: '100%',
+                                      height: '100%',
+                                      borderRadius: 1,
+                                      border: '1px solid',
+                                      borderColor: 'divider'
+                                    }}
+                                  />
+                                )}
+                              </Box>
+                            </CarouselItem>
+                          ))}
+                        </CarouselContent>
+                        <CarouselPrevious />
+                        <CarouselNext />
+                      </Carousel>
+                    </Box>
+                  );
+                })()}
               </CardContent>
             </Card>
           </Box>
@@ -150,27 +334,44 @@ const ProjectDetails: React.FC = () => {
             <Card>
               <CardContent>
                 <Typography variant="body1" sx={{ mb: 3 }}>
-                  {project.description} This project aims to provide an innovative solution 
-                  using cutting-edge technologies and modern development practices.
+                  {project.projectDescription}
                 </Typography>
 
-                <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-                  Objectives
-                </Typography>
-                <List>
-                  <ListItem>
-                    <ListItemText primary="Provide an interactive learning environment" />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText primary="Cover a wide range of programming languages and concepts" />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText primary="Offer real-time feedback and guidance to users" />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText primary="Build a community of learners and contributors" />
-                  </ListItem>
-                </List>
+                <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+                  <Chip 
+                    label={`Category: ${project.category || 'Not specified'}`} 
+                    variant="outlined" 
+                    color="primary"
+                  />
+                  <Chip 
+                    label={`Difficulty: ${project.difficulty}`} 
+                    variant="outlined" 
+                    color="secondary"
+                  />
+                  <Chip 
+                    label={`Estimated Time: ${project.estimatedTime || 'Not specified'}`} 
+                    variant="outlined" 
+                    color="default"
+                  />
+                </Box>
+
+                {project.tags && project.tags.length > 0 && (
+                  <>
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+                      Tags
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                      {project.tags.map((tag, index) => (
+                        <Chip
+                          key={index}
+                          label={tag}
+                          variant="outlined"
+                          size="small"
+                        />
+                      ))}
+                    </Box>
+                  </>
+                )}
               </CardContent>
             </Card>
           </Box>
@@ -178,21 +379,28 @@ const ProjectDetails: React.FC = () => {
           {/* Current Status */}
           <Box sx={{ mb: 4 }}>
             <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
-              Current Status
+              Project Information
             </Typography>
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="body1">Completion</Typography>
+                  <Typography variant="body1">Created</Typography>
                   <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    {project.aiHealthScore}%
+                    {new Date(project.createdAt).toLocaleDateString()}
                   </Typography>
                 </Box>
-                <LinearProgress 
-                  variant="determinate" 
-                  value={project.aiHealthScore} 
-                  sx={{ height: 8, borderRadius: 4 }}
-                />
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="body1">Last Updated</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    {new Date(project.updatedAt).toLocaleDateString()}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="body1">Author</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    {project.user?.name || project.user?.username || 'Unknown'}
+                  </Typography>
+                </Box>
               </CardContent>
             </Card>
           </Box>
@@ -203,51 +411,44 @@ const ProjectDetails: React.FC = () => {
               Tech Stack
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              {project.techStack.map((tech, index) => (
-                <Chip
-                  key={index}
-                  label={tech}
-                  variant="outlined"
-                  sx={{ 
-                    bgcolor: 'hsl(var(--primary))',
-                    color: 'white',
-                    borderColor: 'hsl(var(--primary))'
-                  }}
-                />
-              ))}
+              {project.techStack && project.techStack.length > 0 ? (
+                project.techStack.map((tech, index) => (
+                  <Chip
+                    key={index}
+                    label={tech}
+                    variant="outlined"
+                    sx={{ 
+                      bgcolor: 'hsl(var(--primary))',
+                      color: 'white',
+                      borderColor: 'hsl(var(--primary))'
+                    }}
+                  />
+                ))
+              ) : (
+                <Typography color="text.secondary">No tech stack specified</Typography>
+              )}
             </Box>
           </Box>
 
           {/* Links */}
-          {/* <Box sx={{ mb: 4 }}>
+          <Box sx={{ mb: 4 }}>
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              {project.githubUrl && (
+              {project.projectLink && (
                 <Button
                   variant="outlined"
                   startIcon={<GitHubIcon />}
-                  onClick={() => window.open(project.githubUrl, '_blank')}
+                  onClick={() => window.open(project.projectLink, '_blank')}
                 >
                   GitHub Repository
                 </Button>
               )}
-              <Button
-                variant="outlined"
-                startIcon={<DocumentationIcon />}
-              >
-                Read the full project documentation
-              </Button>
-            </Box>
-          </Box> */}
-
-          <Box sx={{ mb: 4 }}>
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              {(
+              {project.demoUrl && (
                 <Button
                   variant="outlined"
-                  startIcon={<GitHubIcon />}
-                  onClick={() => window.open("https://github.com/varun-101/array_garray", '_blank')}
+                  startIcon={<DownloadIcon />}
+                  onClick={() => window.open(project.demoUrl, '_blank')}
                 >
-                  GitHub Repository
+                  Live Demo
                 </Button>
               )}
               <Button
@@ -264,25 +465,28 @@ const ProjectDetails: React.FC = () => {
         <TabPanel value={tabValue} index={1}>
           <Box sx={{ mb: 4 }}>
             <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
-              AI Project Analyzer Health Report
+              Project Analysis
             </Typography>
             <Card>
               <CardContent>
+                <Typography variant="body1" sx={{ mb: 2 }}>
+                  This project appears to be in active development. Here are some observations:
+                </Typography>
                 <List>
                   <ListItem>
-                    <ListItemText primary="Enhance front-end design for better user experience." />
+                    <ListItemText primary="Project has a clear description and defined tech stack" />
                   </ListItem>
                   <ListItem>
-                    <ListItemText primary="Expand tutorial content to cover more advanced topics." />
+                    <ListItemText primary={`Difficulty level: ${project.difficulty}`} />
                   </ListItem>
                   <ListItem>
-                    <ListItemText primary="Improve documentation clarity and completeness." />
+                    <ListItemText primary={`Category: ${project.category || 'Not specified'}`} />
                   </ListItem>
                   <ListItem>
-                    <ListItemText primary="Add comprehensive testing suite for better reliability." />
+                    <ListItemText primary={`Estimated completion time: ${project.estimatedTime || 'Not specified'}`} />
                   </ListItem>
                   <ListItem>
-                    <ListItemText primary="Optimize performance for better user experience." />
+                    <ListItemText primary={`Tech stack includes ${project.techStack?.length || 0} technologies`} />
                   </ListItem>
                 </List>
               </CardContent>
@@ -294,36 +498,60 @@ const ProjectDetails: React.FC = () => {
         <TabPanel value={tabValue} index={2}>
           <Box sx={{ mb: 4 }}>
             <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
-              Next Steps Roadmap
+              Project Timeline
             </Typography>
             <Card sx={{ mb: 3 }}>
               <CardContent>
                 <List>
                   <ListItem>
-                    <ListItemText primary="Recruiting front-end developers to refine the user interface." />
+                    <ListItemText 
+                      primary="Project Created" 
+                      secondary={new Date(project.createdAt).toLocaleDateString()}
+                    />
                   </ListItem>
                   <ListItem>
-                    <ListItemText primary="Creating new tutorials on data structures and algorithms." />
+                    <ListItemText 
+                      primary="Last Updated" 
+                      secondary={new Date(project.updatedAt).toLocaleDateString()}
+                    />
                   </ListItem>
                   <ListItem>
-                    <ListItemText primary="Updating the project documentation with detailed setup instructions and contribution guidelines." />
+                    <ListItemText 
+                      primary="Estimated Completion Time" 
+                      secondary={project.estimatedTime || 'Not specified'}
+                    />
                   </ListItem>
                 </List>
               </CardContent>
             </Card>
 
             <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
-              Auto-Generated Pitch Deck
+              Project Resources
             </Typography>
             <Card>
               <CardContent>
-                <Button
-                  variant="contained"
-                  startIcon={<DownloadIcon />}
-                  fullWidth
-                >
-                  Download the pitch deck
-                </Button>
+                <Box sx={{ display: 'flex', gap: 2, flexDirection: 'column' }}>
+                  {project.projectLink && (
+                    <Button
+                      variant="outlined"
+                      startIcon={<GitHubIcon />}
+                      onClick={() => window.open(project.projectLink, '_blank')}
+                      fullWidth
+                    >
+                      View Source Code
+                    </Button>
+                  )}
+                  {project.demoUrl && (
+                    <Button
+                      variant="outlined"
+                      startIcon={<DownloadIcon />}
+                      onClick={() => window.open(project.demoUrl, '_blank')}
+                      fullWidth
+                    >
+                      Try Live Demo
+                    </Button>
+                  )}
+                </Box>
               </CardContent>
             </Card>
           </Box>
