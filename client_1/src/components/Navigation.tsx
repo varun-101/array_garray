@@ -128,16 +128,6 @@ const Navigation: React.FC = () => {
           ) : (
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button
-                variant="text"
-                sx={{
-                  color: 'white',
-                  '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
-                }}
-                onClick={loginWithGithub}
-              >
-                Login
-              </Button>
-              <Button
                 variant="contained"
                 startIcon={<PersonIcon />}
                 sx={{
@@ -147,7 +137,7 @@ const Navigation: React.FC = () => {
                 }}
                 onClick={loginWithGithub}
               >
-                Sign Up
+                Login
               </Button>
             </Box>
           )}
