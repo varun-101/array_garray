@@ -12,7 +12,6 @@ import {
   MenuItem,
 } from '@mui/material';
 import {
-  Code as CodeIcon,
   Notifications as NotificationsIcon,
   Person as PersonIcon,
   Add as AddIcon,
@@ -50,7 +49,12 @@ const Navigation: React.FC = () => {
     >
       <Toolbar sx={{ justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <CodeIcon sx={{ color: 'white', fontSize: 28 }} />
+          <Box
+            component="img"
+            src="/logo.png"
+            alt="ReGIT Logo"
+            sx={{ width: 28, height: 28, borderRadius: '4px' }}
+          />
           <Typography
             variant="h5"
             component="div"
@@ -63,7 +67,7 @@ const Navigation: React.FC = () => {
             }}
             onClick={() => navigate('/')}
           >
-            EngiVerse
+            ReGIT
           </Typography>
         </Box>
 
