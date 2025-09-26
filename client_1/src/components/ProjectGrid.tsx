@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useMemo } from 'react';
 import {
   Container,
@@ -118,7 +119,7 @@ const ProjectGrid: React.FC = () => {
       </Box>
 
       {/* Filters */}
-      <Box sx={{ mb: 4 }}>
+      {/* <Box sx={{ mb: 4 }}>
         <Box
           sx={{
             display: 'grid',
@@ -190,7 +191,7 @@ const ProjectGrid: React.FC = () => {
             />
           </Box>
         </Box>
-      </Box>
+      </Box> */}
 
       {/* Projects Grid */}
       {filteredProjects.length > 0 ? (

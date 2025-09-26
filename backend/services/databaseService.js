@@ -4,7 +4,6 @@ import PullRequest from "../models/PullRequest.js";
 
 class DatabaseService {
   
-  // User operations
   static async createOrUpdateUser(githubUser, accessToken) {
     try {
       const userData = {
