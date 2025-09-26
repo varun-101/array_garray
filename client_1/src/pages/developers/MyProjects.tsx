@@ -18,7 +18,9 @@ import {
 import { GitHub as GitHubIcon, Launch as LaunchIcon, Refresh as RefreshIcon, FolderOpen as FolderOpenIcon } from '@mui/icons-material';
 import Navigation from '../../components/Navigation';
 import Footer from '../../components/Footer';
-
+import { useDispatch, useSelector } from 'react-redux';
+import { setRepos } from '../../store/slices/reposSlice';
+import { RootState } from '@/store/store';
 interface RepoItem {
   name: string;
   fullName: string;
@@ -34,11 +36,13 @@ interface RepoItem {
 
 const MyProjects: React.FC = () => {
   const { user, isAuthenticated, accessToken } = useAuth();
-  const [repos, setRepos] = React.useState<RepoItem[]>([]);
+  const [repos, setRepo] = React.useState<RepoItem[]>([]);
   const [loading, setLoading] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
 
   const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3000';
+  const dispatch = useDispatch();
+  const selector = useSelector((state: RootState) => state.repos);
 
   React.useEffect(() => {
     const fetchRepos = async () => {
@@ -55,7 +59,9 @@ const MyProjects: React.FC = () => {
         const data = await res.json();
         
         if (!res.ok) throw new Error(data?.error || 'Failed to load projects');
-        setRepos(data.data || []);
+        setRepo(data.data || []);
+        dispatch(setRepos(data.data || []));
+        console.log()
       } catch (e: any) {
         setError(e.message || 'Failed to load projects');
       } finally {
