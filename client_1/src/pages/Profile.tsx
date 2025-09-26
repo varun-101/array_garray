@@ -47,8 +47,8 @@ const Profile: React.FC = () => {
     setTabValue(newValue);
   };
 
-  // Fallback mock for preview if not authenticated
-  const profile = user || {
+  // Merge user with safe defaults so arrays/fields always exist
+  const defaultProfile = {
     name: 'Sophia Chen',
     username: 'sophiach',
     avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=256',
@@ -58,6 +58,12 @@ const Profile: React.FC = () => {
     bio: "I'm a computer science student at State University passionate about building innovative solutions. I love collaborating on projects and learning from others.",
     skills: ['Python', 'JavaScript', 'React', 'Node.js', 'SQL', 'Data Structures', 'Algorithms', 'Machine Learning'],
     interests: ['Web Development', 'Mobile Apps', 'AI', 'Open Source', 'Education', 'Sustainability'],
+  } as const;
+
+  const profile = { ...defaultProfile, ...(user || {}),
+    // Ensure arrays are arrays even if user provides undefined/null
+    skills: (user as any)?.skills ?? defaultProfile.skills,
+    interests: (user as any)?.interests ?? defaultProfile.interests,
   } as any;
 
   return (
