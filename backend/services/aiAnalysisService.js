@@ -363,7 +363,7 @@ class AIAnalysisService {
               content: prompt
             }
           ],
-          max_tokens: 1500,
+          max_tokens: 1300,
           temperature: 0.3
         },
         {
