@@ -15,6 +15,9 @@ import AddProject from "./pages/developers/AddProject";
 import MyProjects from "./pages/developers/MyProjects";
 import Explore from "./pages/developers/Explore";
 import Profile from "./pages/developers/Profile";
+import MentorForm from "./pages/mentors/MentorForm";
+import MentorProfile from "./pages/mentors/Profile";
+import MentorLogin from "./pages/mentors/Login";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +36,9 @@ const App = () => (
               <Route path="/add-project" element={<AddProject />} />
               <Route path="/my-projects" element={<MyProjects />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/mentor-form" element={<MentorForm />} />
+              <Route path="/mentor-profile" element={<MentorProfile />} />
+              <Route path="/mentor-login" element={<MentorLogin />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
               <Route path="/explore" element={<Explore />} />

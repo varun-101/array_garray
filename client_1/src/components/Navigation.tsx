@@ -135,9 +135,21 @@ const Navigation: React.FC = () => {
                   color: 'hsl(var(--primary))',
                   '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.9)' }
                 }}
+                onClick={() => navigate('/mentor-login')}
+              >
+                Login as Mentor
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<PersonIcon />}
+                sx={{
+                  bgcolor: 'white',
+                  color: 'hsl(var(--primary))',
+                  '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.9)' }
+                }}
                 onClick={loginWithGithub}
               >
-                Login
+                Login as Developer
               </Button>
             </Box>
           )}
