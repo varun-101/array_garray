@@ -1,0 +1,154 @@
+import React from 'react';
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  Box,
+  IconButton,
+  Badge,
+  Avatar,
+  Menu,
+  MenuItem,
+} from '@mui/material';
+import {
+  Code as CodeIcon,
+  Notifications as NotificationsIcon,
+  Person as PersonIcon,
+  Add as AddIcon,
+} from '@mui/icons-material';
+import { useAppSelector } from '../hooks/useRedux';
+
+const Navigation: React.FC = () => {
+  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+
+  const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  return (
+    <AppBar 
+      position="sticky" 
+      sx={{ 
+        background: 'var(--gradient-primary)',
+        backdropFilter: 'blur(10px)',
+        borderBottom: '1px solid hsl(var(--border))',
+        boxShadow: 'var(--shadow-card)'
+      }}
+    >
+      <Toolbar sx={{ justifyContent: 'space-between' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <CodeIcon sx={{ color: 'white', fontSize: 28 }} />
+          <Typography
+            variant="h5"
+            component="div"
+            sx={{
+              fontWeight: 700,
+              color: 'white',
+              textDecoration: 'none',
+              '&:hover': { opacity: 0.9 }
+            }}
+          >
+            EngiVerse
+          </Typography>
+        </Box>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Button
+            variant="text"
+            sx={{
+              color: 'white',
+              '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
+            }}
+          >
+            Explore
+          </Button>
+          <Button
+            variant="text"
+            sx={{
+              color: 'white',
+              '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
+            }}
+          >
+            Mentors
+          </Button>
+          
+          {isAuthenticated ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Button
+                startIcon={<AddIcon />}
+                variant="contained"
+                sx={{
+                  bgcolor: 'hsl(var(--accent))',
+                  color: 'white',
+                  '&:hover': { bgcolor: 'hsl(var(--accent))' }
+                }}
+              >
+                Submit Project
+              </Button>
+              
+              <IconButton color="inherit">
+                <Badge badgeContent={3} color="secondary">
+                  <NotificationsIcon />
+                </Badge>
+              </IconButton>
+              
+              <IconButton
+                onClick={handleProfileMenuOpen}
+                sx={{ p: 0.5 }}
+              >
+                <Avatar
+                  src={user?.avatar}
+                  alt={user?.name}
+                  sx={{ width: 32, height: 32 }}
+                />
+              </IconButton>
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="text"
+                sx={{
+                  color: 'white',
+                  '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
+                }}
+              >
+                Login
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<PersonIcon />}
+                sx={{
+                  bgcolor: 'white',
+                  color: 'hsl(var(--primary))',
+                  '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.9)' }
+                }}
+              >
+                Sign Up
+              </Button>
+            </Box>
+          )}
+        </Box>
+
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleMenuClose}
+          sx={{ mt: 1 }}
+        >
+          <MenuItem onClick={handleMenuClose}>Profile</MenuItem>
+          <MenuItem onClick={handleMenuClose}>My Projects</MenuItem>
+          <MenuItem onClick={handleMenuClose}>Settings</MenuItem>
+          <MenuItem onClick={handleMenuClose}>Logout</MenuItem>
+        </Menu>
+      </Toolbar>
+    </AppBar>
+  );
+};
+
+export default Navigation;
