@@ -17,10 +17,10 @@ import {
   Person as PersonIcon,
   Add as AddIcon,
 } from '@mui/icons-material';
-import { useAppSelector } from '../hooks/useRedux';
+import { useAuth } from '../context/AuthContext';
 
 const Navigation: React.FC = () => {
-  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, user, loginWithGithub, logout } = useAuth();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -117,6 +117,7 @@ const Navigation: React.FC = () => {
                   color: 'white',
                   '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
                 }}
+                onClick={loginWithGithub}
               >
                 Login
               </Button>
@@ -128,6 +129,7 @@ const Navigation: React.FC = () => {
                   color: 'hsl(var(--primary))',
                   '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.9)' }
                 }}
+                onClick={loginWithGithub}
               >
                 Sign Up
               </Button>
@@ -144,7 +146,7 @@ const Navigation: React.FC = () => {
           <MenuItem onClick={handleMenuClose}>Profile</MenuItem>
           <MenuItem onClick={handleMenuClose}>My Projects</MenuItem>
           <MenuItem onClick={handleMenuClose}>Settings</MenuItem>
-          <MenuItem onClick={handleMenuClose}>Logout</MenuItem>
+          <MenuItem onClick={() => { handleMenuClose(); logout(); }}>Logout</MenuItem>
         </Menu>
       </Toolbar>
     </AppBar>
