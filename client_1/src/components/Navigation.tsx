@@ -19,11 +19,16 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Link, useNavigate } from 'react-router-dom';
+
+
 
 const Navigation: React.FC = () => {
   const { isAuthenticated, user, loginWithGithub, logout } = useAuth();
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+
+  const navigate = useNavigate();
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -49,12 +54,14 @@ const Navigation: React.FC = () => {
           <Typography
             variant="h5"
             component="div"
+            className='cursor-pointer'
             sx={{
               fontWeight: 700,
               color: 'white',
               textDecoration: 'none',
               '&:hover': { opacity: 0.9 }
             }}
+            onClick={() => navigate('/')}
           >
             EngiVerse
           </Typography>
@@ -67,6 +74,8 @@ const Navigation: React.FC = () => {
               color: 'white',
               '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
             }}
+
+            onClick={() => navigate('/explore')}
           >
             Explore
           </Button>

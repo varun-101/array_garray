@@ -202,29 +202,9 @@ const AddProject: React.FC = () => {
                     </Select>
                   </FormControl>
 
-                  <FormControl fullWidth required>
-                    <InputLabel>Difficulty</InputLabel>
-                    <Select
-                      value={formData.difficulty}
-                      label="Difficulty"
-                      onChange={(e) => handleInputChange('difficulty', e.target.value)}
-                    >
-                      {difficulties.map((difficulty) => (
-                        <MenuItem key={difficulty} value={difficulty}>
-                          {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+               
 
-                  <TextField
-                    fullWidth
-                    label="Estimated Time"
-                    value={formData.estimatedTime}
-                    onChange={(e) => handleInputChange('estimatedTime', e.target.value)}
-                    placeholder="e.g., 2-3 weeks"
-                    required
-                  />
+                 
                 </Box>
 
                 {/* Tech Stack */}
@@ -315,6 +295,29 @@ const AddProject: React.FC = () => {
                   </Card>
                 </Box>
 
+
+                <Box>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    Project Demo Videos
+                  </Typography>
+                  <Card sx={{ border: '2px dashed hsl(var(--border))', bgcolor: 'hsl(var(--muted))' }}>
+                    <CardContent sx={{ textAlign: 'center', py: 4 }}>
+                      <UploadIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+                      <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+                        Upload Demo Videos
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Drag and drop Videos or click to browse
+                      </Typography>
+                      <Button variant="outlined">
+                        Choose Videos
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </Box>
+
+                
+
                 <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
                   <Button
                     variant="outlined"
@@ -325,7 +328,7 @@ const AddProject: React.FC = () => {
                   <Button
                     type="submit"
                     variant="contained"
-                    disabled={!formData.title || !formData.description || !formData.category || !formData.difficulty}
+                    disabled={!formData.title || !formData.description || !formData.category}
                   >
                     Create Project
                   </Button>

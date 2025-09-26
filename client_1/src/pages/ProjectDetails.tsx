@@ -219,13 +219,33 @@ const ProjectDetails: React.FC = () => {
           </Box>
 
           {/* Links */}
-          <Box sx={{ mb: 4 }}>
+          {/* <Box sx={{ mb: 4 }}>
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
               {project.githubUrl && (
                 <Button
                   variant="outlined"
                   startIcon={<GitHubIcon />}
                   onClick={() => window.open(project.githubUrl, '_blank')}
+                >
+                  GitHub Repository
+                </Button>
+              )}
+              <Button
+                variant="outlined"
+                startIcon={<DocumentationIcon />}
+              >
+                Read the full project documentation
+              </Button>
+            </Box>
+          </Box> */}
+
+          <Box sx={{ mb: 4 }}>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              {(
+                <Button
+                  variant="outlined"
+                  startIcon={<GitHubIcon />}
+                  onClick={() => window.open("https://github.com/varun-101/array_garray", '_blank')}
                 >
                   GitHub Repository
                 </Button>

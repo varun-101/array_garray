@@ -15,6 +15,7 @@ import {
   Psychology as PsychologyIcon,
   TrendingUp as TrendingUpIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 
 const HeroSection: React.FC = () => {
   const stats = [
@@ -23,6 +24,8 @@ const HeroSection: React.FC = () => {
     { label: 'AI Insights', value: '15K+', icon: <PsychologyIcon /> },
     { label: 'Success Rate', value: '78%', icon: <TrendingUpIcon /> },
   ];
+
+  const navigate = useNavigate();
 
   return (
     <Box
@@ -133,6 +136,7 @@ const HeroSection: React.FC = () => {
                 },
                 transition: 'var(--transition-bounce)',
               }}
+              onClick={() =>  navigate('/explore')}
             >
               Explore Projects
             </Button>
