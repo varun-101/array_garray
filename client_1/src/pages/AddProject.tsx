@@ -202,29 +202,9 @@ const AddProject: React.FC = () => {
                     </Select>
                   </FormControl>
 
-                  <FormControl fullWidth required>
-                    <InputLabel>Difficulty</InputLabel>
-                    <Select
-                      value={formData.difficulty}
-                      label="Difficulty"
-                      onChange={(e) => handleInputChange('difficulty', e.target.value)}
-                    >
-                      {difficulties.map((difficulty) => (
-                        <MenuItem key={difficulty} value={difficulty}>
-                          {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+               
 
-                  <TextField
-                    fullWidth
-                    label="Estimated Time"
-                    value={formData.estimatedTime}
-                    onChange={(e) => handleInputChange('estimatedTime', e.target.value)}
-                    placeholder="e.g., 2-3 weeks"
-                    required
-                  />
+                 
                 </Box>
 
                 {/* Tech Stack */}
@@ -348,7 +328,7 @@ const AddProject: React.FC = () => {
                   <Button
                     type="submit"
                     variant="contained"
-                    disabled={!formData.title || !formData.description || !formData.category || !formData.difficulty}
+                    disabled={!formData.title || !formData.description || !formData.category}
                   >
                     Create Project
                   </Button>

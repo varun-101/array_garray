@@ -52,12 +52,14 @@ const Navigation: React.FC = () => {
           <Typography
             variant="h5"
             component="div"
+            className='cursor-pointer'
             sx={{
               fontWeight: 700,
               color: 'white',
               textDecoration: 'none',
               '&:hover': { opacity: 0.9 }
             }}
+            onClick={() => navigate('/')}
           >
             EngiVerse
           </Typography>
