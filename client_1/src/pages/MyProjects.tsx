@@ -177,6 +177,9 @@ const MyProjects: React.FC = () => {
                         <Chip size="small" label={`${repo.forks} Forks`} variant="outlined" />
                         <Chip size="small" label={repo.private ? 'Private' : 'Public'} color={repo.private ? 'default' : 'success'} />
                       </Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                        Updated {repo.lastUpdated ? new Date(repo.lastUpdated).toLocaleDateString() : '—'}
+                      </Typography>
                     </CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 2, pb: 2 }}>
                       <Tooltip title="Open on GitHub">

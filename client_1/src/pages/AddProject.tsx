@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -23,10 +23,21 @@ import {
 import { useAppDispatch } from '../hooks/useRedux';
 import { addProject } from '../store/slices/projectsSlice';
 import Navigation from '../components/Navigation';
+import { useAuth } from '../context/AuthContext';
+import { uploadFileToBucket } from '../lib/appwrite';
+import { CircularProgress } from '@mui/material';
+
+interface RepoItem {
+  name: string;
+  fullName: string;
+  description: string;
+  url: string;
+}
 
 const AddProject: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const { isAuthenticated, accessToken } = useAuth();
 
   const [formData, setFormData] = useState({
     title: '',
@@ -38,10 +49,23 @@ const AddProject: React.FC = () => {
     estimatedTime: '',
     techStack: [] as string[],
     tags: [] as string[],
+    projectImgUrl: '' as string,
   });
 
   const [newTech, setNewTech] = useState('');
   const [newTag, setNewTag] = useState('');
+
+  const [repos, setRepos] = useState<RepoItem[]>([]);
+  const [loadingRepos, setLoadingRepos] = useState(false);
+  const [repoError, setRepoError] = useState<string | null>(null);
+  const [selectedRepo, setSelectedRepo] = useState<string>('');
+
+  const [imageUploads, setImageUploads] = useState<{ fileId: string; url: string }[]>([]);
+  const [videoUploads, setVideoUploads] = useState<{ fileId: string; url: string }[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadingVideos, setUploadingVideos] = useState(false);
+
+  const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3000';
 
   const categories = [
     'Web Development',
@@ -96,34 +120,95 @@ const AddProject: React.FC = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const newProject = {
-      id: Date.now().toString(),
-      title: formData.title,
-      description: formData.description,
+
+    // Backend expects: projectName, projectDescription, projectLink, techStack, projectImgUrl, accessToken
+    const payload = {
+      projectName: formData.title,
+      projectDescription: formData.description,
+      projectLink: formData.githubUrl,
       techStack: formData.techStack,
+      projectImgUrl: formData.projectImgUrl || null,
+      projectImgUrls: imageUploads.map(i => i.url),
+      projectVideoUrls: videoUploads.map(v => v.url),
+      demoUrl: formData.demoUrl || null,
       category: formData.category,
-      status: 'seeking-contributors' as const,
-      author: {
-        name: 'Current User', // This would come from auth context
-        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
-        university: 'Your University'
-      },
-      contributors: 1,
-      lastUpdated: new Date().toISOString().split('T')[0],
-      githubUrl: formData.githubUrl,
-      demoUrl: formData.demoUrl,
-      tags: formData.tags,
-      difficulty: formData.difficulty as 'beginner' | 'intermediate' | 'advanced',
+      difficulty: formData.difficulty,
       estimatedTime: formData.estimatedTime,
-      aiHealthScore: Math.floor(Math.random() * 40) + 60, // Random score between 60-100
+      tags: formData.tags,
+      accessToken: accessToken,
     };
 
-    dispatch(addProject(newProject));
-    navigate('/');
+    try {
+      const res = await fetch(`${apiBase}/api/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Failed to create project');
+
+      // Also keep local store updated for immediate UX
+      const localProject: any = {
+        id: data?._id || Date.now().toString(),
+        title: formData.title,
+        description: formData.description,
+        techStack: formData.techStack,
+        category: formData.category,
+        status: 'seeking-contributors' as const,
+        author: {
+          name: 'Current User',
+          avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
+          university: 'Your University'
+        },
+        contributors: 1,
+        lastUpdated: new Date().toISOString().split('T')[0],
+        githubUrl: formData.githubUrl,
+        demoUrl: formData.demoUrl,
+        tags: formData.tags,
+        difficulty: formData.difficulty as 'beginner' | 'intermediate' | 'advanced',
+        estimatedTime: formData.estimatedTime,
+        projectImgUrl: formData.projectImgUrl || undefined,
+        projectImgUrls: imageUploads.map(i => i.url),
+        projectVideoUrls: videoUploads.map(v => v.url),
+        aiHealthScore: Math.floor(Math.random() * 40) + 60,
+      };
+      dispatch(addProject(localProject));
+
+      navigate('/');
+    } catch (err: any) {
+      alert(err?.message || 'Failed to create project');
+    }
   };
+
+  useEffect(() => {
+    const fetchRepos = async () => {
+      if (!isAuthenticated || !accessToken) return;
+      try {
+        setLoadingRepos(true);
+        setRepoError(null);
+        const res = await fetch(`${apiBase}/github/repos`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accessToken }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Failed to load repositories');
+        setRepos((data.data || []).map((r: any) => ({
+          name: r.name,
+          fullName: r.fullName,
+          description: r.description,
+          url: r.url,
+        })));
+      } catch (e: any) {
+        setRepoError(e.message || 'Failed to load repositories');
+      } finally {
+        setLoadingRepos(false);
+      }
+    };
+    fetchRepos();
+  }, [apiBase, isAuthenticated, accessToken]);
 
   return (
     <>
@@ -150,6 +235,42 @@ const AddProject: React.FC = () => {
           <CardContent>
             <form onSubmit={handleSubmit}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {/* Select repository from user's GitHub */}
+                <FormControl fullWidth>
+                  <InputLabel>Repository</InputLabel>
+                  <Select
+                    value={selectedRepo}
+                    label="Repository"
+                    onChange={(e) => {
+                      const full = e.target.value as string;
+                      setSelectedRepo(full);
+                      const repo = repos.find(r => r.fullName === full);
+                      if (repo) {
+                        setFormData(prev => ({
+                          ...prev,
+                          title: repo.name,
+                          githubUrl: repo.url,
+                          description: repo.description || prev.description,
+                        }));
+                      }
+                    }}
+                    disabled={loadingRepos}
+                  >
+                    {loadingRepos && <MenuItem value="" disabled>Loading repositories...</MenuItem>}
+                    {!loadingRepos && repoError && (
+                      <MenuItem value="" disabled>Error loading repositories</MenuItem>
+                    )}
+                    {!loadingRepos && !repoError && repos.length === 0 && (
+                      <MenuItem value="" disabled>No repositories found</MenuItem>
+                    )}
+                    {repos.map((repo) => (
+                      <MenuItem key={repo.fullName} value={repo.fullName}>
+                        {repo.fullName}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
                 <TextField
                   fullWidth
                   label="Project Name"
@@ -288,9 +409,50 @@ const AddProject: React.FC = () => {
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                         Drag and drop images or click to browse
                       </Typography>
-                      <Button variant="outlined">
+                      <input
+                        id="imageUploader"
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        style={{ display: 'none' }}
+                        onChange={async (e) => {
+                          const files = Array.from(e.target.files || []);
+                          if (!files.length) return;
+                          setUploadingImages(true);
+                          try {
+                            const uploads = await Promise.all(files.map(f => uploadFileToBucket(f, { kind: 'image', projectSlug: formData.title || 'new-project' })));
+                            setImageUploads(prev => [...prev, ...uploads]);
+                            // store the first image URL as preview for now
+                            setFormData(prev => ({ ...prev, projectImgUrl: uploads[0]?.url || prev.projectImgUrl }));
+                          } catch (err: any) {
+                            console.error('Image upload failed', err);
+                            alert(err?.message || 'Image upload failed');
+                          } finally {
+                            setUploadingImages(false);
+                          }
+                        }}
+                      />
+                      <Button variant="outlined" onClick={() => document.getElementById('imageUploader')?.click()}>
                         Choose Images
                       </Button>
+                      {uploadingImages && (
+                        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'center' }}>
+                          <CircularProgress size={20} />
+                          <Typography variant="body2" color="text.secondary">Uploading images…</Typography>
+                        </Box>
+                      )}
+                      {!uploadingImages && imageUploads.length > 0 && (
+                        <Box sx={{ mt: 2 }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            {imageUploads.length} image{imageUploads.length>1?'s':''} uploaded
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
+                            {imageUploads.map((img, idx) => (
+                              <Box key={img.fileId + idx} component="img" src={img.url} alt={`upload-${idx}`} sx={{ width: 120, height: 80, objectFit: 'cover', borderRadius: 1, border: '1px solid hsl(var(--border))' }} />
+                            ))}
+                          </Box>
+                        </Box>
+                      )}
                     </CardContent>
                   </Card>
                 </Box>
@@ -309,9 +471,41 @@ const AddProject: React.FC = () => {
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                         Drag and drop Videos or click to browse
                       </Typography>
-                      <Button variant="outlined">
+                      <input
+                        id="videoUploader"
+                        type="file"
+                        accept="video/*"
+                        multiple
+                        style={{ display: 'none' }}
+                        onChange={async (e) => {
+                          const files = Array.from(e.target.files || []);
+                          if (!files.length) return;
+                          setUploadingVideos(true);
+                          try {
+                            const uploads = await Promise.all(files.map(f => uploadFileToBucket(f, { kind: 'video', projectSlug: formData.title || 'new-project' })));
+                            setVideoUploads(prev => [...prev, ...uploads]);
+                          } catch (err: any) {
+                            console.error('Video upload failed', err);
+                            alert(err?.message || 'Video upload failed');
+                          } finally {
+                            setUploadingVideos(false);
+                          }
+                        }}
+                      />
+                      <Button variant="outlined" onClick={() => document.getElementById('videoUploader')?.click()}>
                         Choose Videos
                       </Button>
+                      {uploadingVideos && (
+                        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'center' }}>
+                          <CircularProgress size={20} />
+                          <Typography variant="body2" color="text.secondary">Uploading videos…</Typography>
+                        </Box>
+                      )}
+                      {!uploadingVideos && videoUploads.length > 0 && (
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                          {videoUploads.length} video{videoUploads.length>1?'s':''} uploaded
+                        </Typography>
+                      )}
                     </CardContent>
                   </Card>
                 </Box>

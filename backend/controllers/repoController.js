@@ -1,4 +1,5 @@
 import GitHubService from "../services/githubService.js";
+import Repository from "../models/Repository.js";
 
 // Get user's repositories
 export const getUserRepos = async (req, res) => {
@@ -10,12 +11,53 @@ export const getUserRepos = async (req, res) => {
     }
 
     const githubService = new GitHubService(accessToken);
-    const repos = await githubService.getUserRepos();
-    
+    const ghRepos = await githubService.getUserRepos();
+
+    // Map to simplified shape expected by frontend and upsert into MongoDB
+    const simplified = ghRepos.map(r => ({
+      githubId: r.id,
+      ownerLogin: r.owner?.login,
+      ownerAvatarUrl: r.owner?.avatar_url,
+      name: r.name,
+      fullName: r.full_name,
+      description: r.description,
+      private: r.private,
+      url: r.html_url,
+      cloneUrl: r.clone_url,
+      language: r.language,
+      stars: r.stargazers_count,
+      forks: r.forks_count,
+      lastUpdated: r.updated_at,
+      visibility: r.visibility,
+    }));
+
+    // Upsert repositories concurrently
+    await Promise.all(
+      simplified.map(async (repo) => {
+        await Repository.updateOne(
+          { githubId: repo.githubId },
+          { $set: repo },
+          { upsert: true }
+        );
+      })
+    );
+
+    // Return the minimal set needed by MyProjects
     res.json({
       success: true,
-      data: repos,
-      count: repos.length
+      data: simplified.map(r => ({
+        name: r.name,
+        fullName: r.fullName,
+        description: r.description,
+        private: r.private,
+        url: r.url,
+        cloneUrl: r.cloneUrl,
+        language: r.language,
+        stars: r.stars,
+        forks: r.forks,
+        lastUpdated: r.lastUpdated,
+      })),
+      count: simplified.length
     });
   } catch (error) {
     console.error("Error fetching repositories:", error);

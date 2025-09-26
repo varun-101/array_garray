@@ -9,6 +9,13 @@ export const uploadProject = async (req, res) => {
       projectLink,
       techStack,
       projectImgUrl,
+      projectImgUrls,
+      projectVideoUrls,
+      demoUrl,
+      category,
+      difficulty,
+      estimatedTime,
+      tags,
       accessToken,
     } = req.body;
 
@@ -45,6 +52,13 @@ export const uploadProject = async (req, res) => {
       projectLink,
       techStack: normalizedTechStack,
       projectImgUrl: projectImgUrl || null,
+      projectImgUrls: Array.isArray(projectImgUrls) ? projectImgUrls : (projectImgUrl ? [projectImgUrl] : []),
+      projectVideoUrls: Array.isArray(projectVideoUrls) ? projectVideoUrls : [],
+      demoUrl: demoUrl || null,
+      category: category || '',
+      difficulty: difficulty || 'beginner',
+      estimatedTime: estimatedTime || '',
+      tags: Array.isArray(tags) ? tags : [],
       accessToken,
     });
 
