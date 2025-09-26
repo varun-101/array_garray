@@ -18,6 +18,13 @@ const projectsSchema = new mongoose.Schema(
     estimatedTime: { type: String, required: false, default: '' },
     tags: [{ type: String, trim: true }],
     accessToken: { type: String, required: true },
+    // Feedback system
+    feedback: [{
+      mentor: { type: mongoose.Schema.Types.ObjectId, ref: "Mentor", required: true },
+      feedbackText: { type: String, required: true, trim: true },
+      rating: { type: Number, min: 1, max: 5, required: false },
+      createdAt: { type: Date, default: Date.now }
+    }]
   },
   { timestamps: true }
 );

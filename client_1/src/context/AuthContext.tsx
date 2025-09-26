@@ -12,11 +12,31 @@ export interface AuthUser {
   lastLoginAt?: string;
 }
 
+export interface MentorUser {
+  _id: string;
+  name: string;
+  organization: string;
+  role: string;
+  email: string;
+  profilePhotoUrl?: string;
+  linkedinUrl?: string;
+  githubUrl?: string;
+  portfolioUrl?: string;
+  isActive: boolean;
+  lastLoginAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface AuthContextValue {
   user: AuthUser | null;
+  mentor: MentorUser | null;
   accessToken: string | null;
   isAuthenticated: boolean;
+  isMentorAuthenticated: boolean;
+  userType: 'developer' | 'mentor' | null;
   loginWithGithub: () => void;
+  loginMentor: (mentorData: MentorUser) => void;
   logout: () => void;
 }
 
@@ -24,6 +44,7 @@ const AuthContext = React.createContext<AuthContextValue | undefined>(undefined)
 
 const STORAGE_KEYS = {
   user: 'auth_user',
+  mentor: 'mentor_data',
   token: 'auth_token',
 } as const;
 
@@ -45,16 +66,24 @@ function parseHashForAuth(hash: string): { accessToken: string | null; user: Aut
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = React.useState<AuthUser | null>(null);
+  const [mentor, setMentor] = React.useState<MentorUser | null>(null);
   const [accessToken, setAccessToken] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     // 1) Load persisted auth
     const storedUser = localStorage.getItem(STORAGE_KEYS.user);
+    const storedMentor = localStorage.getItem(STORAGE_KEYS.mentor);
     const storedToken = localStorage.getItem(STORAGE_KEYS.token);
+    
     if (storedToken) setAccessToken(storedToken);
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser));
+      } catch {}
+    }
+    if (storedMentor) {
+      try {
+        setMentor(JSON.parse(storedMentor));
       } catch {}
     }
 
@@ -78,18 +107,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.location.href = `${apiBase}/auth/github`;
   }, [apiBase]);
 
+  const loginMentor = React.useCallback((mentorData: MentorUser) => {
+    setMentor(mentorData);
+    setUser(null); // Clear developer auth
+    setAccessToken(null);
+    localStorage.setItem(STORAGE_KEYS.mentor, JSON.stringify(mentorData));
+    localStorage.removeItem(STORAGE_KEYS.user);
+    localStorage.removeItem(STORAGE_KEYS.token);
+  }, []);
+
   const logout = React.useCallback(() => {
     setAccessToken(null);
     setUser(null);
+    setMentor(null);
     localStorage.removeItem(STORAGE_KEYS.token);
     localStorage.removeItem(STORAGE_KEYS.user);
+    localStorage.removeItem(STORAGE_KEYS.mentor);
   }, []);
+
+  const isAuthenticated = Boolean(user && accessToken);
+  const isMentorAuthenticated = Boolean(mentor);
+  const userType = isAuthenticated ? 'developer' : isMentorAuthenticated ? 'mentor' : null;
 
   const value: AuthContextValue = {
     user,
+    mentor,
     accessToken,
-    isAuthenticated: Boolean(user && accessToken),
+    isAuthenticated,
+    isMentorAuthenticated,
+    userType,
     loginWithGithub,
+    loginMentor,
     logout,
   };
 

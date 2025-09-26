@@ -7,6 +7,7 @@ import repoRoutes from "./routes/repoRoutes.js";
 import issueRoutes from "./routes/issueRoutes.js";
 import prRoutes from "./routes/prRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
+import mentorRoutes from "./routes/mentorRoutes.js";
 import aiResponseService from "./services/aiService.js";
 import aiRoutes from "./routes/aiRoutes.js";
 // import aiRoutes from "./routes/aiRoutes.js";
@@ -26,6 +27,7 @@ app.use("/github", repoRoutes);
 app.use("/github", issueRoutes);
 app.use("/github", prRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/mentors", mentorRoutes);
 app.use("/ai", aiRoutes);
 app.use("/api/ai", aiRoutes);
 

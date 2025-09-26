@@ -20,12 +20,14 @@ import {
 import { useAppSelector, useAppDispatch } from '../hooks/useRedux';
 import { setSearchQuery, setCategory, setSortBy, clearFilters } from '../store/slices/filtersSlice';
 import { setProjects } from '../store/slices/projectsSlice';
+import { useAuth } from '../context/AuthContext';
 import ProjectCard from './ProjectCard';
 
 const ProjectGrid: React.FC = () => {
   const dispatch = useAppDispatch();
   const { projects } = useAppSelector((state) => state.projects);
   const filters = useAppSelector((state) => state.filters);
+  const { userType } = useAuth();
 
   const categories = [
     'All',
@@ -142,19 +144,24 @@ const ProjectGrid: React.FC = () => {
           Discover Projects
         </Typography>
         <Typography variant="h6" color="text.secondary" sx={{ mb: 3 }}>
-          Find the perfect project to contribute to or adopt
+          {userType === 'mentor' 
+            ? 'Find projects to mentor and guide students' 
+            : 'Find the perfect project to contribute to or adopt'
+          }
         </Typography>
-        <Button
-          variant="contained"
-          size="large"
-          onClick={() => window.location.href = '/add-project'}
-          sx={{
-            bgcolor: 'hsl(var(--primary))',
-            '&:hover': { bgcolor: 'hsl(var(--primary-hover))' },
-          }}
-        >
-          + New Project
-        </Button>
+        {userType === 'developer' && (
+          <Button
+            variant="contained"
+            size="large"
+            onClick={() => window.location.href = '/add-project'}
+            sx={{
+              bgcolor: 'hsl(var(--primary))',
+              '&:hover': { bgcolor: 'hsl(var(--primary-hover))' },
+            }}
+          >
+            + New Project
+          </Button>
+        )}
       </Box>
 
       {/* Filters */}

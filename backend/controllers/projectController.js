@@ -89,13 +89,56 @@ export const getProjectById = async (req, res) => {
     }
 
     const project = await Projects.findById(id)
-      .populate("user", "name avatar username");
+      .populate("user", "name avatar username")
+      .populate("feedback.mentor", "name organization role profilePhotoUrl");
 
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
 
     return res.status(200).json(project);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+export const submitFeedback = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { mentorId, feedbackText, rating } = req.body;
+
+    if (!id || !mentorId || !feedbackText) {
+      return res.status(400).json({ 
+        error: "Project ID, mentor ID, and feedback text are required" 
+      });
+    }
+
+    const project = await Projects.findById(id);
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    // Check if mentor has already given feedback
+    const existingFeedback = project.feedback.find(f => f.mentor.toString() === mentorId);
+    if (existingFeedback) {
+      return res.status(400).json({ error: "You have already provided feedback for this project" });
+    }
+
+    // Add feedback to project
+    project.feedback.push({
+      mentor: mentorId,
+      feedbackText,
+      rating: rating || null
+    });
+
+    await project.save();
+
+    // Return updated project with populated feedback
+    const updatedProject = await Projects.findById(id)
+      .populate("user", "name avatar username")
+      .populate("feedback.mentor", "name organization role profilePhotoUrl");
+
+    return res.status(200).json(updatedProject);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
