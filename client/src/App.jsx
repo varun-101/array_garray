@@ -6,6 +6,7 @@ import Navbar from "./sections/Navbar.jsx";
 import Hero from "./sections/Hero.jsx";
 import About from "./sections/About.jsx";
 import Projects from "./sections/Projects.jsx";
+import MyProjects from "./sections/MyProjects.jsx";
 import Footer from "./sections/Footer.jsx";
 import Marketplace from "./sections/Marketplace.jsx";
 import {DotPattern} from "./components/DotPattern.jsx";
@@ -84,6 +85,7 @@ export const App = () => {
                 <Route path="/" element={<Layout><HomePage /></Layout>} />
                 <Route path="/project" element={<Layout><ProjectPage /></Layout>} />
                 <Route path="/marketplace" element={<Layout><Marketplace /></Layout>} />
+                <Route path="/my-projects" element={<Layout><MyProjects /></Layout>} />
             </Routes>
         </BrowserRouter>
     )

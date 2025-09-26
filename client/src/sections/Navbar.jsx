@@ -26,20 +26,9 @@ function Navigation() {
                 </Link>
             </li>
             <li className="nav-li">
-                <Link className="nav-link" to="/project">
-                    Project
+                <Link className="nav-link" to="/my-projects">
+                    My Projects
                 </Link>
-            </li>
-            <li className="nav-li">
-                {location.pathname === "/" ? (
-                    <a className="nav-link" href="#work">
-                        Projects
-                    </a>
-                ) : (
-                    <Link className="nav-link" to="/">
-                        Projects
-                    </Link>
-                )}
             </li>
             <li className="nav-li">
                 {location.pathname === "/" ? (
