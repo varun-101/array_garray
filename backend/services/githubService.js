@@ -225,6 +225,70 @@ class GitHubService {
       throw error;
     }
   }
+
+  // Get latest commit for a repository
+  async getLatestCommit(owner, repo, branch = 'main') {
+    try {
+      const response = await axios.get(`${this.baseURL}/repos/${owner}/${repo}/commits/${branch}`, {
+        headers: this.headers
+      });
+      return {
+        hash: response.data.sha,
+        message: response.data.commit.message,
+        date: new Date(response.data.commit.committer.date),
+        author: response.data.commit.author.name,
+        url: response.data.html_url
+      };
+    } catch (error) {
+      // Try with master branch if main fails
+      if (branch === 'main') {
+        try {
+          return await this.getLatestCommit(owner, repo, 'master');
+        } catch (masterError) {
+          throw new Error(`Failed to fetch latest commit: ${error.response?.data?.message || error.message}`);
+        }
+      }
+      throw new Error(`Failed to fetch latest commit: ${error.response?.data?.message || error.message}`);
+    }
+  }
+
+  // Get commit information by hash
+  async getCommitInfo(owner, repo, commitHash) {
+    try {
+      const response = await axios.get(`${this.baseURL}/repos/${owner}/${repo}/commits/${commitHash}`, {
+        headers: this.headers
+      });
+      return {
+        hash: response.data.sha,
+        message: response.data.commit.message,
+        date: new Date(response.data.commit.committer.date),
+        author: response.data.commit.author.name,
+        url: response.data.html_url,
+        stats: response.data.stats
+      };
+    } catch (error) {
+      throw new Error(`Failed to fetch commit info: ${error.response?.data?.message || error.message}`);
+    }
+  }
+
+  // Parse repository URL to get owner and repo name
+  static parseRepoUrl(repoUrl) {
+    try {
+      const url = new URL(repoUrl);
+      const pathParts = url.pathname.split('/').filter(part => part);
+      
+      if (pathParts.length >= 2) {
+        return {
+          owner: pathParts[0],
+          repo: pathParts[1].replace(/\.git$/, '')
+        };
+      }
+      
+      throw new Error('Invalid repository URL format');
+    } catch (error) {
+      throw new Error(`Failed to parse repository URL: ${error.message}`);
+    }
+  }
 }
 
 export default GitHubService;

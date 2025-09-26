@@ -15,6 +15,11 @@ GITHUB_CLIENT_SECRET=your_github_client_secret_here
 # MongoDB Configuration
 MONGODB_URI=mongodb://localhost:27017/codeissance_hackathon
 
+# OpenRouter Configuration (for AI code analysis)
+OPENROUTER_API_KEY=sk-your_openrouter_api_key_here
+OPENROUTER_MODEL=anthropic/claude-3.5-sonnet
+OPENROUTER_APP_NAME=Codeissance-Hackathon-App
+
 # Server Configuration
 PORT=3000
 NODE_ENV=development

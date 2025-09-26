@@ -150,6 +150,100 @@ All repository endpoints require the `accessToken` in the request body.
 }
 ```
 
+## AI Analysis Endpoints
+
+### Generate AI Analysis
+**POST** `/api/ai/analyze/:projectId?`
+```json
+{
+  "repoUrl": "https://github.com/owner/repo",
+  "projectName": "My Awesome Project",
+  "techStack": ["React", "Node.js", "TypeScript"],
+  "difficulty": "intermediate",
+  "category": "Web Development"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "projectId": "optional-project-id",
+  "projectName": "My Awesome Project",
+  "repoUrl": "https://github.com/owner/repo",
+  "techStack": ["React", "Node.js", "TypeScript"],
+  "difficulty": "intermediate",
+  "category": "Web Development",
+  "analysis": {
+    "overallScore": 85,
+    "codeQuality": 78,
+    "maintainability": 82,
+    "security": 90,
+    "performance": 75,
+    "documentation": 88,
+    "recommendations": [
+      "Consider adding more comprehensive error handling",
+      "Implement automated testing to improve code coverage"
+    ],
+    "strengths": [
+      "Well-structured codebase with clear separation of concerns",
+      "Good use of modern technologies and best practices"
+    ],
+    "improvements": [
+      "Increase test coverage to above 80%",
+      "Add performance monitoring and optimization"
+    ],
+    "techStackAnalysis": {
+      "modern": ["React", "TypeScript", "Node.js"],
+      "stable": ["JavaScript", "HTML", "CSS"],
+      "emerging": ["Next.js", "Tailwind CSS"]
+    }
+  },
+  "generatedAt": "2024-01-01T00:00:00.000Z",
+  "version": "1.0"
+}
+```
+
+### Get AI Service Status
+**GET** `/api/ai/status`
+
+**Response:**
+```json
+{
+  "status": "available",
+  "hasApiKey": true,
+  "provider": "OpenRouter",
+  "model": "anthropic/claude-3.5-sonnet",
+  "message": "AI analysis service is ready with OpenRouter",
+  "version": "1.0",
+  "supportedFeatures": [
+    "Repository code analysis",
+    "Code quality assessment",
+    "Security analysis",
+    "Performance evaluation",
+    "Architecture review",
+    "Tech stack analysis"
+  ],
+  "availableModels": [
+    "anthropic/claude-3.5-sonnet",
+    "openai/gpt-4-turbo",
+    "openai/gpt-3.5-turbo",
+    "meta-llama/llama-3.1-70b-instruct",
+    "google/gemini-pro"
+  ]
+}
+```
+
+### Get Cached Analysis (Future Feature)
+**GET** `/api/ai/analysis/:projectId`
+```json
+{
+  "message": "Analysis retrieval not implemented yet",
+  "note": "Use POST /api/ai/analyze/:projectId to generate new analysis",
+  "projectId": "project-id"
+}
+```
+
 ### Get Specific Pull Request
 **POST** `/github/repos/:owner/:repo/pulls/:pr_number`
 ```json

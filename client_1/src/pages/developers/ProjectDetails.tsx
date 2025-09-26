@@ -27,6 +27,7 @@ import {
 } from '@mui/icons-material';
 import { useAppSelector } from '../../hooks/useRedux';
 import Navigation from '../../components/Navigation';
+import AISummary from '../../components/AISummary';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '../../components/ui/carousel';
 
 interface TabPanelProps {
@@ -188,6 +189,7 @@ const ProjectDetails: React.FC = () => {
             <Tab label="Overview" />
             <Tab label="Health Report" />
             <Tab label="Roadmap" />
+            <Tab label="AI Summary" />
           </Tabs>
         </Box>
 
@@ -555,6 +557,18 @@ const ProjectDetails: React.FC = () => {
               </CardContent>
             </Card>
           </Box>
+        </TabPanel>
+
+        {/* AI Summary Tab */}
+        <TabPanel value={tabValue} index={3}>
+          <AISummary 
+            projectName={project.projectName}
+            techStack={project.techStack || []}
+            difficulty={project.difficulty}
+            category={project.category || 'Not specified'}
+            repoUrl={project.projectLink}
+            projectId={project._id}
+          />
         </TabPanel>
       </Container>
     </>
