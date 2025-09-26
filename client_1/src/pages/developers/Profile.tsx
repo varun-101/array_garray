@@ -15,8 +15,8 @@ import {
   ListItemText,
   Divider,
 } from '@mui/material';
-import Navigation from '../components/Navigation';
-import { useAuth } from '../context/AuthContext';
+import Navigation from '../../components/Navigation';
+import { useAuth } from '../../context/AuthContext';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -41,6 +41,7 @@ function TabPanel(props: TabPanelProps) {
 
 const Profile: React.FC = () => {
   const { user, isAuthenticated, loginWithGithub } = useAuth();
+  console.log({user})
   const [tabValue, setTabValue] = React.useState(0);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {

@@ -23,8 +23,8 @@ import {
   Download as DownloadIcon,
   Favorite as FavoriteIcon,
 } from '@mui/icons-material';
-import { useAppSelector } from '../hooks/useRedux';
-import Navigation from '../components/Navigation';
+import { useAppSelector } from '../../hooks/useRedux';
+import Navigation from '../../components/Navigation';
 
 interface TabPanelProps {
   children?: React.ReactNode;
