@@ -17,7 +17,7 @@ import {
   Person as PersonIcon,
   Add as AddIcon,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+// import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -25,7 +25,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 const Navigation: React.FC = () => {
   const { isAuthenticated, user, loginWithGithub, logout } = useAuth();
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
   const navigate = useNavigate();
