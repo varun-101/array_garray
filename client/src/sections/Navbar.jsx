@@ -1,28 +1,51 @@
+
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
+import { Link, useLocation } from "react-router-dom";
 import { motion } from "motion/react";
+
 function Navigation() {
+    const location = useLocation();
+    
     return (
         <ul className="nav-ul">
             <li className="nav-li">
-                <a className="nav-link" href="#home">
-                    Home
-                </a>
+                {location.pathname === "/" ? (
+                    <a className="nav-link" href="#home">
+                        Home
+                    </a>
+                ) : (
+                    <Link className="nav-link" to="/">
+                        Home
+                    </Link>
+                )}
             </li>
             <li className="nav-li">
-                <a className="nav-link" href="#about">
+                <Link className="nav-link" to="/marketplace">
                     MarketPlace
-                </a>
+                </Link>
             </li>
             <li className="nav-li">
-                <a className="nav-link" href="#work">
-                    Projects
-                </a>
+                {location.pathname === "/" ? (
+                    <a className="nav-link" href="#work">
+                        Projects
+                    </a>
+                ) : (
+                    <Link className="nav-link" to="/">
+                        Projects
+                    </Link>
+                )}
             </li>
             <li className="nav-li">
-                <a className="nav-link" href="#connect">
-                    Connect
-                </a>
+                {location.pathname === "/" ? (
+                    <a className="nav-link" href="#connect">
+                        Connect
+                    </a>
+                ) : (
+                    <Link className="nav-link" to="/">
+                        Connect
+                    </Link>
+                )}
             </li>
         </ul>
     );
@@ -31,15 +54,15 @@ const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
     const { user } = useAuth();
     return (
-        <div className="fixed inset-x-0 z-20 w-full backdrop-blur-lg bg-primary/40">
+        <div className="fixed inset-x-0 top-0 z-20 w-full backdrop-blur-lg bg-primary/40">
             <div className="mx-auto c-space max-w-7xl">
                 <div className="flex items-center justify-between py-2 sm:py-0">
-                    <a
-                        href="/"
+                    <Link
+                        to="/"
                         className="text-xl font-bold transition-colors text-neutral-400 hover:text-white"
                     >
                         Engiverse
-                    </a>
+                    </Link>
 
                     <nav className="hidden sm:flex">
                         <Navigation />
