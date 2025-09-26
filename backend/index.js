@@ -26,7 +26,8 @@ app.use("/github", repoRoutes);
 app.use("/github", issueRoutes);
 app.use("/github", prRoutes);
 app.use("/api/projects", projectRoutes);
-app.use("/ai", aiRoutes);app.use("/api/ai", aiRoutes);
+app.use("/ai", aiRoutes);
+app.use("/api/ai", aiRoutes);
 
 
 app.listen(port, () => {
