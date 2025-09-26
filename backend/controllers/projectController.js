@@ -67,3 +67,15 @@ export const uploadProject = async (req, res) => {
     return res.status(400).json({ error: err.message });
   }
 };
+
+export const getProjects = async (_req, res) => {
+  try {
+    const projects = await Projects.find()
+      .sort({ createdAt: -1 })
+      .populate("user", "name avatar username");
+
+    return res.status(200).json(projects);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
