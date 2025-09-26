@@ -12,7 +12,6 @@ import {
   MenuItem,
 } from '@mui/material';
 import {
-  Code as CodeIcon,
   Notifications as NotificationsIcon,
   Person as PersonIcon,
   Add as AddIcon,
@@ -50,7 +49,12 @@ const Navigation: React.FC = () => {
     >
       <Toolbar sx={{ justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <CodeIcon sx={{ color: 'white', fontSize: 28 }} />
+          <Box
+            component="img"
+            src="/logo.png"
+            alt="ReGIT Logo"
+            sx={{ width: 28, height: 28, borderRadius: '4px' }}
+          />
           <Typography
             variant="h5"
             component="div"
@@ -63,7 +67,7 @@ const Navigation: React.FC = () => {
             }}
             onClick={() => navigate('/')}
           >
-            EngiVerse
+            ReGIT
           </Typography>
         </Box>
 
@@ -92,7 +96,7 @@ const Navigation: React.FC = () => {
           
           {isAuthenticated ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Button
+              <Button onClick={() => navigate('/add-project')}
                 startIcon={<AddIcon />}
                 variant="contained"
                 sx={{
@@ -124,16 +128,6 @@ const Navigation: React.FC = () => {
           ) : (
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button
-                variant="text"
-                sx={{
-                  color: 'white',
-                  '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
-                }}
-                onClick={loginWithGithub}
-              >
-                Login
-              </Button>
-              <Button
                 variant="contained"
                 startIcon={<PersonIcon />}
                 sx={{
@@ -143,7 +137,7 @@ const Navigation: React.FC = () => {
                 }}
                 onClick={loginWithGithub}
               >
-                Sign Up
+                Login
               </Button>
             </Box>
           )}
@@ -155,7 +149,7 @@ const Navigation: React.FC = () => {
           onClose={handleMenuClose}
           sx={{ mt: 1 }}
         >
-          <MenuItem onClick={handleMenuClose}>Profile</MenuItem>
+          <MenuItem onClick={() => { handleMenuClose(); navigate('/profile'); }}>Profile</MenuItem>
           <MenuItem onClick={handleMenuClose}>My Projects</MenuItem>
           <MenuItem onClick={handleMenuClose}>Settings</MenuItem>
           <MenuItem onClick={() => { handleMenuClose(); logout(); }}>Logout</MenuItem>

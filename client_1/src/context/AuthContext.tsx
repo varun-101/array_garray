@@ -35,6 +35,7 @@ function parseHashForAuth(hash: string): { accessToken: string | null; user: Aut
   if (!encodedUser) return { accessToken, user: null };
   try {
     const json = atob(decodeURIComponent(encodedUser));
+    console.log( JSON.parse(json))
     const parsed = JSON.parse(json) as AuthUser;
     return { accessToken, user: parsed };
   } catch {
