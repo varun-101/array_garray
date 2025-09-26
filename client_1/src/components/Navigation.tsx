@@ -155,7 +155,7 @@ const Navigation: React.FC = () => {
           onClose={handleMenuClose}
           sx={{ mt: 1 }}
         >
-          <MenuItem onClick={handleMenuClose}>Profile</MenuItem>
+          <MenuItem onClick={() => { handleMenuClose(); navigate('/profile'); }}>Profile</MenuItem>
           <MenuItem onClick={handleMenuClose}>My Projects</MenuItem>
           <MenuItem onClick={handleMenuClose}>Settings</MenuItem>
           <MenuItem onClick={() => { handleMenuClose(); logout(); }}>Logout</MenuItem>
