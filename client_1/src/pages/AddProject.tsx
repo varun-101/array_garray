@@ -20,11 +20,11 @@ import {
   Close as CloseIcon,
   Upload as UploadIcon,
 } from '@mui/icons-material';
-import { useAppDispatch } from '../../hooks/useRedux';
-import { addProject } from '../../store/slices/projectsSlice';
-import Navigation from '../../components/Navigation';
-import { useAuth } from '../../context/AuthContext';
-import { uploadFileToBucket } from '../../lib/appwrite';
+import { useAppDispatch } from '../hooks/useRedux';
+import { addProject } from '../store/slices/projectsSlice';
+import Navigation from '../components/Navigation';
+import { useAuth } from '../context/AuthContext';
+import { uploadFileToBucket } from '../lib/appwrite';
 import { CircularProgress } from '@mui/material';
 
 interface RepoItem {

@@ -16,6 +16,9 @@ export interface Project {
   lastUpdated: string;
   githubUrl?: string;
   demoUrl?: string;
+  projectImgUrl?: string; // deprecated single
+  projectImgUrls?: string[];
+  projectVideoUrls?: string[];
   tags: string[];
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   estimatedTime: string;

@@ -9,6 +9,13 @@ export const uploadProject = async (req, res) => {
       projectLink,
       techStack,
       projectImgUrl,
+      projectImgUrls,
+      projectVideoUrls,
+      demoUrl,
+      category,
+      difficulty,
+      estimatedTime,
+      tags,
       accessToken,
     } = req.body;
 
@@ -45,11 +52,30 @@ export const uploadProject = async (req, res) => {
       projectLink,
       techStack: normalizedTechStack,
       projectImgUrl: projectImgUrl || null,
+      projectImgUrls: Array.isArray(projectImgUrls) ? projectImgUrls : (projectImgUrl ? [projectImgUrl] : []),
+      projectVideoUrls: Array.isArray(projectVideoUrls) ? projectVideoUrls : [],
+      demoUrl: demoUrl || null,
+      category: category || '',
+      difficulty: difficulty || 'beginner',
+      estimatedTime: estimatedTime || '',
+      tags: Array.isArray(tags) ? tags : [],
       accessToken,
     });
 
     return res.status(201).json(project);
   } catch (err) {
     return res.status(400).json({ error: err.message });
+  }
+};
+
+export const getProjects = async (_req, res) => {
+  try {
+    const projects = await Projects.find()
+      .sort({ createdAt: -1 })
+      .populate("user", "name avatar username");
+
+    return res.status(200).json(projects);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
 };

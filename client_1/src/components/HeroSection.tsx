@@ -158,6 +158,7 @@ const HeroSection: React.FC = () => {
                 },
                 transition: 'var(--transition-bounce)',
               }}
+              onClick={() => navigate('/mentor-form')}
             >
               Join as Mentor
             </Button>
