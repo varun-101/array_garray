@@ -9,7 +9,7 @@ import prRoutes from "./routes/prRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
 import aiResponseService from "./services/aiService.js";
 import aiRoutes from "./routes/aiRoutes.js";
-import aiRoutes from "./routes/aiRoutes.js";
+// import aiRoutes from "./routes/aiRoutes.js";
 
 dotenv.config();
 

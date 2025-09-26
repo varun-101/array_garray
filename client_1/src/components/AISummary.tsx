@@ -36,6 +36,7 @@ interface AISummaryProps {
   category: string;
   repoUrl?: string;
   projectId?: string;
+  onAnalysisUpdate?: (analysis: any) => void;
 }
 
 const AISummary: React.FC<AISummaryProps> = ({ 
@@ -44,7 +45,8 @@ const AISummary: React.FC<AISummaryProps> = ({
   difficulty, 
   category,
   repoUrl,
-  projectId
+  projectId,
+  onAnalysisUpdate
 }) => {
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -96,6 +98,11 @@ const AISummary: React.FC<AISummaryProps> = ({
       });
       setHasAnalyzed(true);
       
+      // Notify parent component of analysis update
+      if (onAnalysisUpdate) {
+        onAnalysisUpdate(data.analysis);
+      }
+      
       // Load history if this is a cached result
       if (data.cached && repoUrl) {
         loadAnalysisHistory();
@@ -105,8 +112,14 @@ const AISummary: React.FC<AISummaryProps> = ({
       setError(err.message || 'Failed to generate AI analysis');
       
       // Fallback to dummy data if API fails
-      setAiAnalysis(getFallbackAnalysis());
+      const fallbackAnalysis = getFallbackAnalysis();
+      setAiAnalysis(fallbackAnalysis);
       setHasAnalyzed(true);
+      
+      // Notify parent component of fallback analysis
+      if (onAnalysisUpdate) {
+        onAnalysisUpdate(fallbackAnalysis);
+      }
     } finally {
       setLoading(false);
     }
@@ -184,6 +197,11 @@ const AISummary: React.FC<AISummaryProps> = ({
         });
         setHasAnalyzed(true);
         loadAnalysisHistory();
+        
+        // Notify parent component of cached analysis
+        if (onAnalysisUpdate) {
+          onAnalysisUpdate(data.analysis);
+        }
       }
     } catch (error) {
       console.warn('No cached analysis found:', error);

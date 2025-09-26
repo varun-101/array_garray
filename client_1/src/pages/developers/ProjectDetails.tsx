@@ -28,6 +28,7 @@ import {
 import { useAppSelector } from '../../hooks/useRedux';
 import Navigation from '../../components/Navigation';
 import AISummary from '../../components/AISummary';
+import CodeImplementations from '../../components/CodeImplementations';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '../../components/ui/carousel';
 
 interface TabPanelProps {
@@ -83,6 +84,7 @@ const ProjectDetails: React.FC = () => {
   const [project, setProject] = useState<BackendProject | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   
   const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3000';
 
@@ -153,6 +155,25 @@ const ProjectDetails: React.FC = () => {
     setTabValue(newValue);
   };
 
+  // Handler functions for the CodeImplementations component
+  const handleImplementationStart = (implementationIds: string[]) => {
+    // TODO: Connect to backend API for code generation
+    console.log('Starting implementation for:', implementationIds);
+    alert(`Starting implementation for ${implementationIds.length} item(s)`);
+  };
+
+  const handleGeneratePlan = (implementationIds: string[]) => {
+    // TODO: Connect to backend API for plan generation
+    console.log('Generating plan for:', implementationIds);
+    alert('Generating detailed implementation plan...');
+  };
+
+  const handleViewExamples = (implementationId: string) => {
+    // TODO: Show code examples modal or navigate to examples page
+    console.log('Viewing examples for:', implementationId);
+    alert(`Showing code examples for: ${implementationId}`);
+  };
+
   return (
     <>
       <Navigation />
@@ -190,6 +211,7 @@ const ProjectDetails: React.FC = () => {
             <Tab label="Health Report" />
             <Tab label="Roadmap" />
             <Tab label="AI Summary" />
+            <Tab label="Code Implementations" />
           </Tabs>
         </Box>
 
@@ -568,6 +590,19 @@ const ProjectDetails: React.FC = () => {
             category={project.category || 'Not specified'}
             repoUrl={project.projectLink}
             projectId={project._id}
+            onAnalysisUpdate={(analysis) => setAiAnalysis(analysis)}
+          />
+        </TabPanel>
+
+        {/* Code Implementations Tab */}
+        <TabPanel value={tabValue} index={4}>
+          <CodeImplementations
+            aiAnalysis={aiAnalysis}
+            projectName={project.projectName}
+            techStack={project.techStack || []}
+            onImplementationStart={handleImplementationStart}
+            onGeneratePlan={handleGeneratePlan}
+            onViewExamples={handleViewExamples}
           />
         </TabPanel>
       </Container>
