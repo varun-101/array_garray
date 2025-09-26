@@ -2,22 +2,22 @@ import { createTheme } from '@mui/material/styles';
 
 export const theme = createTheme({
   palette: {
-    mode: 'light',
+    mode: 'dark',
     primary: {
-      main: 'hsl(220, 85%, 35%)',
+      main: 'hsl(220, 85%, 55%)',
       contrastText: '#ffffff',
     },
     secondary: {
-      main: 'hsl(260, 75%, 60%)',
+      main: 'hsl(220, 85%, 65%)',
       contrastText: '#ffffff',
     },
     background: {
-      default: 'hsl(220, 20%, 98%)',
-      paper: 'hsl(0, 0%, 100%)',
+      default: 'hsl(220, 25%, 8%)',
+      paper: 'hsl(220, 20%, 12%)',
     },
     text: {
-      primary: 'hsl(220, 25%, 15%)',
-      secondary: 'hsl(220, 15%, 45%)',
+      primary: 'hsl(220, 15%, 92%)',
+      secondary: 'hsl(220, 15%, 65%)',
     },
   },
   typography: {
@@ -57,9 +57,9 @@ export const theme = createTheme({
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         },
         contained: {
-          boxShadow: '0 4px 20px hsl(220, 25%, 15%, 0.08)',
+          boxShadow: '0 4px 20px hsl(0, 0%, 0%, 0.3)',
           '&:hover': {
-            boxShadow: '0 8px 30px hsl(220, 25%, 15%, 0.12)',
+            boxShadow: '0 8px 30px hsl(0, 0%, 0%, 0.4)',
             transform: 'translateY(-2px)',
           },
         },
@@ -68,9 +68,9 @@ export const theme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          boxShadow: '0 4px 20px hsl(220, 25%, 15%, 0.08)',
+          boxShadow: '0 4px 20px hsl(0, 0%, 0%, 0.3)',
           '&:hover': {
-            boxShadow: '0 8px 30px hsl(220, 25%, 15%, 0.12)',
+            boxShadow: '0 8px 30px hsl(0, 0%, 0%, 0.4)',
           },
         },
       },

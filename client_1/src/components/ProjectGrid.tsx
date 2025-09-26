@@ -134,9 +134,7 @@ const ProjectGrid: React.FC = () => {
           sx={{
             fontWeight: 700,
             mb: 2,
-            background: 'var(--gradient-primary)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            color: 'hsl(220, 15%, 92%)',
           }}
         >
           Discover Projects
@@ -149,8 +147,8 @@ const ProjectGrid: React.FC = () => {
           size="large"
           onClick={() => window.location.href = '/add-project'}
           sx={{
-            bgcolor: 'hsl(var(--primary))',
-            '&:hover': { bgcolor: 'hsl(var(--primary-hover))' },
+            bgcolor: 'hsl(220, 85%, 55%)',
+            '&:hover': { bgcolor: 'hsl(220, 85%, 65%)' },
           }}
         >
           + New Project
@@ -259,7 +257,7 @@ const ProjectGrid: React.FC = () => {
           sx={{
             textAlign: 'center',
             py: 8,
-            bgcolor: 'hsl(var(--muted))',
+            bgcolor: 'hsl(220, 20%, 15%)',
             borderRadius: 2,
           }}
         >

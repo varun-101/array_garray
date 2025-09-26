@@ -30,7 +30,7 @@ const HeroSection: React.FC = () => {
   return (
     <Box
       sx={{
-        background: 'var(--gradient-hero)',
+        background: 'hsl(220, 25%, 8%)',
         minHeight: '80vh',
         display: 'flex',
         alignItems: 'center',
@@ -68,7 +68,7 @@ const HeroSection: React.FC = () => {
             <Box
               component="span"
               sx={{
-                background: 'linear-gradient(45deg, #FFD700, #FF6B35)',
+                background: 'linear-gradient(45deg, hsl(220, 85%, 55%), hsl(220, 85%, 65%))',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 display: 'block',

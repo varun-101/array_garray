@@ -37,28 +37,28 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'seeking-contributors':
-        return 'hsl(var(--success))';
+        return 'hsl(140, 70%, 50%)';
       case 'in-progress':
-        return 'hsl(var(--warning))';
+        return 'hsl(45, 90%, 60%)';
       case 'completed':
-        return 'hsl(var(--accent))';
+        return 'hsl(220, 85%, 65%)';
       case 'paused':
-        return 'hsl(var(--muted-foreground))';
+        return 'hsl(220, 15%, 65%)';
       default:
-        return 'hsl(var(--muted-foreground))';
+        return 'hsl(220, 15%, 65%)';
     }
   };
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case 'beginner':
-        return 'hsl(var(--success))';
+        return 'hsl(140, 70%, 50%)';
       case 'intermediate':
-        return 'hsl(var(--warning))';
+        return 'hsl(45, 90%, 60%)';
       case 'advanced':
-        return 'hsl(var(--destructive))';
+        return 'hsl(0, 75%, 60%)';
       default:
-        return 'hsl(var(--muted-foreground))';
+        return 'hsl(220, 15%, 65%)';
     }
   };
 
@@ -68,12 +68,12 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        transition: 'var(--transition-smooth)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         cursor: 'pointer',
-        boxShadow: 'var(--shadow-card)',
+        boxShadow: '0 4px 20px hsl(0, 0%, 0%, 0.3)',
         '&:hover': {
           transform: 'translateY(-4px)',
-          boxShadow: 'var(--shadow-elevated)',
+          boxShadow: '0 8px 30px hsl(0, 0%, 0%, 0.4)',
         },
       }}
       onClick={() => navigate(`/project/${project.id}`)}
@@ -98,21 +98,21 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
           </Box>
           
           <Tooltip title={`AI Health Score: ${project.aiHealthScore}%`}>
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 0.5,
-                bgcolor: project.aiHealthScore > 80 ? 'hsl(var(--success))' : 
-                         project.aiHealthScore > 60 ? 'hsl(var(--warning))' : 'hsl(var(--destructive))',
-                color: 'white',
-                px: 1,
-                py: 0.5,
-                borderRadius: 1,
-                fontSize: '0.75rem',
-                fontWeight: 600,
-              }}
-            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  bgcolor: project.aiHealthScore > 80 ? 'hsl(140, 70%, 50%)' : 
+                           project.aiHealthScore > 60 ? 'hsl(45, 90%, 60%)' : 'hsl(0, 75%, 60%)',
+                  color: 'white',
+                  px: 1,
+                  py: 0.5,
+                  borderRadius: 1,
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                }}
+              >
               <PsychologyIcon sx={{ fontSize: 14 }} />
               {project.aiHealthScore}%
             </Box>
@@ -240,8 +240,8 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
             onAdopt?.(project);
           }}
           sx={{
-            bgcolor: 'hsl(var(--primary))',
-            '&:hover': { bgcolor: 'hsl(var(--primary-hover))' },
+            bgcolor: 'hsl(220, 85%, 55%)',
+            '&:hover': { bgcolor: 'hsl(220, 85%, 65%)' },
           }}
         >
           {project.status === 'seeking-contributors' ? 'Adopt Project' : 'Join Project'}

@@ -10,11 +10,18 @@ import {
   Avatar,
   Menu,
   MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Divider,
+  Chip,
 } from '@mui/material';
 import {
   Notifications as NotificationsIcon,
   Person as PersonIcon,
   Add as AddIcon,
+  CheckCircle as CheckCircleIcon,
+  Warning as WarningIcon,
+  Info as InfoIcon,
 } from '@mui/icons-material';
 // import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -24,10 +31,30 @@ import { Link, useNavigate } from 'react-router-dom';
 
 const Navigation: React.FC = () => {
   const { isAuthenticated, user, loginWithGithub, logout } = useAuth();
-  // const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [notificationAnchorEl, setNotificationAnchorEl] = React.useState<null | HTMLElement>(null);
 
   const navigate = useNavigate();
+
+  // Sample notifications data
+  const notifications = [
+    {
+      id: 1,
+      title: "New Project Submission",
+      message: "Your project 'AI Chatbot' has been successfully submitted for review.",
+      type: "success",
+      time: "2 minutes ago",
+      icon: <CheckCircleIcon />,
+    },
+    {
+      id: 2,
+      title: "Project Update Required",
+      message: "Please update your project documentation to meet our latest standards.",
+      type: "warning",
+      time: "1 hour ago",
+      icon: <WarningIcon />,
+    },
+  ];
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -37,14 +64,35 @@ const Navigation: React.FC = () => {
     setAnchorEl(null);
   };
 
+  const handleNotificationClick = (event: React.MouseEvent<HTMLElement>) => {
+    setNotificationAnchorEl(event.currentTarget);
+  };
+
+  const handleNotificationClose = () => {
+    setNotificationAnchorEl(null);
+  };
+
+  const getNotificationColor = (type: string) => {
+    switch (type) {
+      case 'success':
+        return 'hsl(140, 70%, 50%)';
+      case 'warning':
+        return 'hsl(45, 90%, 60%)';
+      case 'info':
+        return 'hsl(220, 85%, 55%)';
+      default:
+        return 'hsl(220, 15%, 65%)';
+    }
+  };
+
   return (
     <AppBar 
       position="sticky" 
       sx={{ 
-        background: 'var(--gradient-primary)',
+        background: 'hsl(220, 25%, 8%)',
         backdropFilter: 'blur(10px)',
-        borderBottom: '1px solid hsl(var(--border))',
-        boxShadow: 'var(--shadow-card)'
+        borderBottom: '1px solid hsl(220, 20%, 20%)',
+        boxShadow: '0 4px 20px hsl(0, 0%, 0%, 0.3)'
       }}
     >
       <Toolbar sx={{ justifyContent: 'space-between' }}>
@@ -100,16 +148,19 @@ const Navigation: React.FC = () => {
                 startIcon={<AddIcon />}
                 variant="contained"
                 sx={{
-                  bgcolor: 'hsl(var(--accent))',
+                  bgcolor: 'hsl(220, 85%, 55%)',
                   color: 'white',
-                  '&:hover': { bgcolor: 'hsl(var(--accent))' }
+                  '&:hover': { bgcolor: 'hsl(220, 85%, 65%)' }
                 }}
               >
                 Submit Project
               </Button>
               
-              <IconButton color="inherit">
-                <Badge badgeContent={3} color="secondary">
+              <IconButton 
+                color="inherit"
+                onClick={handleNotificationClick}
+              >
+                <Badge badgeContent={notifications.length} color="secondary">
                   <NotificationsIcon />
                 </Badge>
               </IconButton>
@@ -132,7 +183,7 @@ const Navigation: React.FC = () => {
                 startIcon={<PersonIcon />}
                 sx={{
                   bgcolor: 'white',
-                  color: 'hsl(var(--primary))',
+                  color: 'hsl(220, 85%, 55%)',
                   '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.9)' }
                 }}
                 onClick={() => navigate('/mentor-login')}
@@ -144,7 +195,7 @@ const Navigation: React.FC = () => {
                 startIcon={<PersonIcon />}
                 sx={{
                   bgcolor: 'white',
-                  color: 'hsl(var(--primary))',
+                  color: 'hsl(220, 85%, 55%)',
                   '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.9)' }
                 }}
                 onClick={loginWithGithub}
@@ -165,6 +216,116 @@ const Navigation: React.FC = () => {
           <MenuItem onClick={handleMenuClose}>My Projects</MenuItem>
           <MenuItem onClick={handleMenuClose}>Settings</MenuItem>
           <MenuItem onClick={() => { handleMenuClose(); logout(); }}>Logout</MenuItem>
+        </Menu>
+
+        {/* Notification Menu */}
+        <Menu
+          anchorEl={notificationAnchorEl}
+          open={Boolean(notificationAnchorEl)}
+          onClose={handleNotificationClose}
+          sx={{ 
+            mt: 1,
+            '& .MuiPaper-root': {
+              bgcolor: 'hsl(220, 20%, 12%)',
+              border: '1px solid hsl(220, 20%, 20%)',
+              borderRadius: 2,
+              minWidth: 350,
+              maxWidth: 400,
+            }
+          }}
+        >
+          <Box sx={{ p: 2, borderBottom: '1px solid hsl(220, 20%, 20%)' }}>
+            <Typography variant="h6" sx={{ color: 'hsl(220, 15%, 92%)', fontWeight: 600 }}>
+              Notifications
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'hsl(220, 15%, 65%)' }}>
+              {notifications.length} new notifications
+            </Typography>
+          </Box>
+          
+          {notifications.map((notification) => (
+            <MenuItem 
+              key={notification.id}
+              onClick={handleNotificationClose}
+              sx={{ 
+                p: 2,
+                borderBottom: '1px solid hsl(220, 20%, 20%)',
+                '&:hover': {
+                  bgcolor: 'hsl(220, 20%, 15%)',
+                }
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <Box
+                  sx={{
+                    color: getNotificationColor(notification.type),
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    bgcolor: `${getNotificationColor(notification.type)}20`,
+                  }}
+                >
+                  {notification.icon}
+                </Box>
+              </ListItemIcon>
+              <ListItemText
+                primary={
+                  <Typography 
+                    variant="subtitle2" 
+                    sx={{ 
+                      color: 'hsl(220, 15%, 92%)',
+                      fontWeight: 600,
+                      mb: 0.5
+                    }}
+                  >
+                    {notification.title}
+                  </Typography>
+                }
+                secondary={
+                  <Box>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        color: 'hsl(220, 15%, 65%)',
+                        mb: 1,
+                        lineHeight: 1.4
+                      }}
+                    >
+                      {notification.message}
+                    </Typography>
+                    <Chip
+                      label={notification.time}
+                      size="small"
+                      sx={{
+                        bgcolor: 'hsl(220, 20%, 20%)',
+                        color: 'hsl(220, 15%, 65%)',
+                        fontSize: '0.7rem',
+                        height: 20,
+                      }}
+                    />
+                  </Box>
+                }
+              />
+            </MenuItem>
+          ))}
+          
+          <Box sx={{ p: 2, textAlign: 'center' }}>
+            <Button
+              variant="text"
+              size="small"
+              sx={{
+                color: 'hsl(220, 85%, 55%)',
+                '&:hover': {
+                  bgcolor: 'hsl(220, 20%, 15%)',
+                }
+              }}
+            >
+              View All Notifications
+            </Button>
+          </Box>
         </Menu>
       </Toolbar>
     </AppBar>
