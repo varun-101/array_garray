@@ -18,10 +18,15 @@ import {
   Add as AddIcon,
 } from '@mui/icons-material';
 import { useAppSelector } from '../hooks/useRedux';
+import { Link, useNavigate } from 'react-router-dom';
+
+
 
 const Navigation: React.FC = () => {
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+
+  const navigate = useNavigate();
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -65,6 +70,8 @@ const Navigation: React.FC = () => {
               color: 'white',
               '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
             }}
+
+            onClick={() => navigate('/explore')}
           >
             Explore
           </Button>
