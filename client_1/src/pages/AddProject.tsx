@@ -315,6 +315,29 @@ const AddProject: React.FC = () => {
                   </Card>
                 </Box>
 
+
+                <Box>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    Project Demo Videos
+                  </Typography>
+                  <Card sx={{ border: '2px dashed hsl(var(--border))', bgcolor: 'hsl(var(--muted))' }}>
+                    <CardContent sx={{ textAlign: 'center', py: 4 }}>
+                      <UploadIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+                      <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+                        Upload Demo Videos
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Drag and drop Videos or click to browse
+                      </Typography>
+                      <Button variant="outlined">
+                        Choose Videos
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </Box>
+
+                
+
                 <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
                   <Button
                     variant="outlined"
