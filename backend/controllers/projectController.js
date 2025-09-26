@@ -1,0 +1,55 @@
+import DatabaseService from "../services/databaseService.js";
+import Projects from "../models/Projects.js";
+
+export const uploadProject = async (req, res) => {
+  try {
+    const {
+      projectName,
+      projectDescription,
+      projectLink,
+      techStack,
+      projectImgUrl,
+      accessToken,
+    } = req.body;
+
+    if (!projectName || !projectDescription || !projectLink || !accessToken) {
+      return res.status(400).json({
+        error: "projectName, projectDescription, projectLink, accessToken are required",
+      });
+    }
+
+    const linkMatch = typeof projectLink === "string"
+      ? projectLink.match(/^https?:\/\/github\.com\/([^\/\?\#]+)/i)
+      : null;
+    if (!linkMatch) {
+      return res.status(400).json({ error: "projectLink must be a valid GitHub URL" });
+    }
+
+    const username = linkMatch[1];
+
+    const user = await DatabaseService.findUserByUsername(username);
+    if (!user) {
+      return res.status(404).json({ error: "User not found for provided projectLink" });
+    }
+
+    const normalizedTechStack = Array.isArray(techStack)
+      ? techStack
+      : typeof techStack === "string" && techStack.trim().length > 0
+        ? techStack.split(",").map((s) => s.trim()).filter(Boolean)
+        : [];
+
+    const project = await Projects.create({
+      user: user._id,
+      projectName,
+      projectDescription,
+      projectLink,
+      techStack: normalizedTechStack,
+      projectImgUrl: projectImgUrl || null,
+      accessToken,
+    });
+
+    return res.status(201).json(project);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+};

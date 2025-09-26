@@ -1,4 +1,4 @@
-// import dotenv from "dotenv";
+import dotenv from "dotenv";
 import app from "./app.js";
 import connectDB from "./config/database.js";
 import authRoutes from "./routes/auth.js";
@@ -6,8 +6,9 @@ import userRoutes from "./routes/userRoutes.js";
 import repoRoutes from "./routes/repoRoutes.js";
 import issueRoutes from "./routes/issueRoutes.js";
 import prRoutes from "./routes/prRoutes.js";
+import projectRoutes from "./routes/projectRoutes.js";
 
-// dotenv.config();
+dotenv.config();
 
 // Connect to MongoDB
 connectDB();
@@ -24,6 +25,7 @@ app.use("/api/users", userRoutes);
 app.use("/github", repoRoutes);
 app.use("/github", issueRoutes);
 app.use("/github", prRoutes);
+app.use("/api/projects", projectRoutes);
 
 
 app.listen(port, () => {

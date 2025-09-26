@@ -9,7 +9,7 @@ import {
 
 const router = Router();
 
-// Issue routes
+
 router.post("/repos/:owner/:repo/issues", createIssue);
 router.post("/repos/:owner/:repo/issues/list", getIssues);
 router.post("/repos/:owner/:repo/issues/:issue_number", getIssue);
