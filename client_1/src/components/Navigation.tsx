@@ -96,7 +96,7 @@ const Navigation: React.FC = () => {
           
           {isAuthenticated ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Button
+              <Button onClick={() => navigate('/add-project')}
                 startIcon={<AddIcon />}
                 variant="contained"
                 sx={{
