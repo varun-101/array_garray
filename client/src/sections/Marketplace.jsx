@@ -1,4 +1,5 @@
 import React from 'react'
+import ClientTweetCard from '../components/TweetCard'
 
 const Marketplace = () => {
     return (
@@ -7,37 +8,12 @@ const Marketplace = () => {
             <p className="text-gray-400 text-lg mb-12 text-center">Discover premium development resources and tools</p>
             
             <div className="grid grid-cols-1 gap-4 md:grid-cols-6 md:auto-rows-[18rem] mt-12">
-                {/*Grid-1 - Featured Products*/}
-                <div className="flex flex-col justify-start p-6 grid-default-color grid-1">
-                    <div className="z-10">
-                        <p className="headtext mb-4">Featured Products</p>
-                        <p className="subtext mb-6">Discover the latest and most popular items in our marketplace. From innovative tech solutions to creative tools that enhance your development workflow.</p>
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-3">
-                                <div className="w-3 h-3 rounded-full bg-blue-400"></div>
-                                <span className="text-sm text-gray-300 font-medium">Premium Code Templates</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <div className="w-3 h-3 rounded-full bg-green-400"></div>
-                                <span className="text-sm text-gray-300 font-medium">Developer Tools</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <div className="w-3 h-3 rounded-full bg-purple-400"></div>
-                                <span className="text-sm text-gray-300 font-medium">Design Resources</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <div className="w-3 h-3 rounded-full bg-orange-400"></div>
-                                <span className="text-sm text-gray-300 font-medium">Learning Materials</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
                 
-                {/*Grid-2 - Categories*/}
-                <div className="grid-default-color grid-2">
-                    <div className="flex flex-col items-center justify-center w-full h-full p-4">
-                        <p className="mb-6 text-2xl font-bold text-gray-200">Browse Categories</p>
-                        <div className="grid grid-cols-2 gap-4 w-full">
+                {Array.from({ length: 4 }).map((_, idx) => (
+                    <div key={idx} className="grid-default-color grid-2">
+                        <div className="flex flex-col items-center justify-center w-full h-full p-4">
+                            <p className="mb-6 text-2xl font-bold text-gray-200">Browse Categories</p>
+                            <div className="grid grid-cols-2 gap-4 w-full">
                             <div className="p-4 bg-gray-800 rounded-lg text-center cursor-pointer hover:bg-gray-700 transition-all duration-300 hover:scale-105">
                                 <div className="text-2xl mb-2">🌐</div>
                                 <p className="text-sm text-white font-semibold">Web Apps</p>
@@ -57,7 +33,7 @@ const Marketplace = () => {
                         </div>
                     </div>
                 </div>
-                
+                ))}
                 {/*Grid-3 - Stats*/}
                 <div className="grid-black-color grid-3">
                     <div className="z-10 flex flex-col justify-center h-full p-6">
