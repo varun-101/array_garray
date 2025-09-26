@@ -9,44 +9,13 @@ function Navigation() {
     
     return (
         <ul className="nav-ul">
-            <li className="nav-li">
-                {location.pathname === "/" ? (
-                    <a className="nav-link" href="#home">
-                        Home
-                    </a>
-                ) : (
-                    <Link className="nav-link" to="/">
-                        Home
-                    </Link>
-                )}
-            </li>
+            
             <li className="nav-li">
                 <Link className="nav-link" to="/marketplace">
                     MarketPlace
                 </Link>
             </li>
-            <li className="nav-li">
-                {location.pathname === "/" ? (
-                    <a className="nav-link" href="#work">
-                        Projects
-                    </a>
-                ) : (
-                    <Link className="nav-link" to="/">
-                        Projects
-                    </Link>
-                )}
-            </li>
-            <li className="nav-li">
-                {location.pathname === "/" ? (
-                    <a className="nav-link" href="#connect">
-                        Connect
-                    </a>
-                ) : (
-                    <Link className="nav-link" to="/">
-                        Connect
-                    </Link>
-                )}
-            </li>
+                
         </ul>
     );
 }
