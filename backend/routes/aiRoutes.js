@@ -46,7 +46,6 @@ import aiResponseController from "../controllers/aiController.js";
 
 // const router = Router();
 
-router.get("/generate", aiResponseController);
-
+router.post("/generate", aiResponseController);
 
 export default router;  

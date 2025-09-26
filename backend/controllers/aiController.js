@@ -295,11 +295,13 @@ export const getAnalysisHistory = async (req, res) => {
     });
   }
 };
+
+
 import aiService from "../services/aiService.js";
 const aiResponseController = async(req, res) => {
     try{
-        const {metaData} = req.body;
-        const response = await aiService(metaData);
+        const {projectDescription} = req.body;
+        const response = await aiService(projectDescription);
         res.status(200).json({ message:response});
 
     } catch(err){

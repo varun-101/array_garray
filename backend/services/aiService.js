@@ -4,13 +4,22 @@ dotenv.config();
 
 const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
 
-const aiResponseService = async (metaData) => {
+const aiResponseService = async (projectDescription) => {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: "Explain how AI works in a few words",
+      contents: `Generate a Mermaid flowchart for the given project showing Setup, Current Features, and Future Features.
+
+Rules:
+- Start with "flowchart TD" 
+- No code blocks or explanations
+- Use proper line breaks (not \\n)
+- Use only alphanumeric node IDs with underscores
+- Return only raw Mermaid syntax
+
+Project: ${projectDescription}`,
     });
-    console.log("ai response",response.text);
+    console.log("ai response", response.text);
     return response.text;
   } catch (err) {
     console.log(err);
