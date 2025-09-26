@@ -145,7 +145,7 @@ const Profile: React.FC = () => {
               <Card sx={{ mb: 3 }}>
                 <CardContent>
                   <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                    {profile && profile.skills.map((s: string, i: number) => (
+                    {profile && profile.skills?.map((s: string, i: number) => (
                       <Chip key={i} label={s} variant="outlined" sx={{ bgcolor: 'hsl(var(--primary))', color: 'white', borderColor: 'hsl(var(--primary))' }} />
                     ))}
                   </Box>
@@ -156,7 +156,7 @@ const Profile: React.FC = () => {
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                    {profile.interests.map((s: string, i: number) => (
+                    {profile.interests?.map((s: string, i: number) => (
                       <Chip key={i} label={s} variant="outlined" />
                     ))}
                   </Box>
@@ -174,7 +174,7 @@ const Profile: React.FC = () => {
         {/* Skills Tab */}
         <TabPanel value={tabValue} index={2}>
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            {profile.skills.map((s: string, i: number) => (
+            {profile.skills?.map((s: string, i: number) => (
               <Chip key={i} label={s} variant="outlined" />
             ))}
           </Box>
@@ -183,7 +183,7 @@ const Profile: React.FC = () => {
         {/* Interests Tab */}
         <TabPanel value={tabValue} index={3}>
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            {profile.interests.map((s: string, i: number) => (
+            {profile.interests?.map((s: string, i: number) => (
               <Chip key={i} label={s} variant="outlined" />
             ))}
           </Box>
