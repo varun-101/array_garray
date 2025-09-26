@@ -12,12 +12,12 @@ const GLOBE_CONFIG= {
     width: 800,
     height: 800,
     onRender: () => {},
-    devicePixelRatio: 2,
+    devicePixelRatio: 1.5,
     phi: 0,
     theta: 0.3,
     dark: 1,
     diffuse: 0.4,
-    mapSamples: 16000,
+    mapSamples: 6000,
     mapBrightness: 1.2,
     baseColor: [1, 1, 1],
     markerColor: [251 / 255, 100 / 255, 21 / 255],
@@ -78,21 +78,46 @@ export function Globe({
         window.addEventListener("resize", onResize);
         onResize();
 
-        const globe = createGlobe(canvasRef.current, {
-            ...config,
-            width: width * 2,
-            height: width * 2,
-            onRender: (state) => {
-                if (!pointerInteracting.current) phi += 0.005;
-                state.phi = phi + rs.get();
-                state.width = width * 2;
-                state.height = width * 2;
-            },
-        });
+        const canvas = canvasRef.current;
+        if (!canvas || !canvas.isConnected) {
+            window.removeEventListener("resize", onResize);
+            return () => {};
+        }
 
-        setTimeout(() => (canvasRef.current.style.opacity = "1"), 0);
+        // Ensure we have a WebGL context before initializing COBE
+        const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+        if (!gl || width === 0) {
+            window.removeEventListener("resize", onResize);
+            return () => {};
+        }
+
+        const dpr = Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1, config.devicePixelRatio || 1.5);
+
+        let globe;
+        try {
+            globe = createGlobe(canvas, {
+                ...config,
+                devicePixelRatio: dpr,
+                width: Math.max(1, Math.floor(width * dpr)),
+                height: Math.max(1, Math.floor(width * dpr)),
+                onRender: (state) => {
+                    if (!pointerInteracting.current) phi += 0.005;
+                    state.phi = phi + rs.get();
+                    state.width = Math.max(1, Math.floor(width * dpr));
+                    state.height = Math.max(1, Math.floor(width * dpr));
+                },
+            });
+        } catch (e) {
+            window.removeEventListener("resize", onResize);
+            return () => {};
+        }
+
+        setTimeout(() => {
+            if (canvas && canvas.isConnected) canvas.style.opacity = "1";
+        }, 0);
+
         return () => {
-            globe.destroy();
+            if (globe) globe.destroy();
             window.removeEventListener("resize", onResize);
         };
     }, [rs, config]);

@@ -44,7 +44,7 @@ const About = () => {
                         <p className="subtext">Based in India</p>
                     </div>
                     <figure className="absolute left-[30%] top-[10%]">
-                        <Globe/>
+                        {/* <Globe/> */}
                     </figure>
                 </div>
                 {/*Grid-4*/}

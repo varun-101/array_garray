@@ -39,6 +39,13 @@ export const App = () => {
                 <section id="home" className="scroll-mt-20">
                     <Hero />
                 </section>
+                <section id='about'>
+                    <About />
+                </section>
+                <section id='projects'>
+                    <Projects />
+                </section>
+                <Footer />
             </div>
 
         </div>
