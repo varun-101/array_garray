@@ -17,10 +17,12 @@ import {
   Person as PersonIcon,
   Add as AddIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Navigation: React.FC = () => {
   const { isAuthenticated, user, loginWithGithub, logout } = useAuth();
+  const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -74,8 +76,9 @@ const Navigation: React.FC = () => {
               color: 'white',
               '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
             }}
+            onClick={() => navigate('/my-projects')}
           >
-            Mentors
+            My Projects
           </Button>
           
           {isAuthenticated ? (
