@@ -79,3 +79,24 @@ export const getProjects = async (_req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
+
+export const getProjectById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      return res.status(400).json({ error: "Project ID is required" });
+    }
+
+    const project = await Projects.findById(id)
+      .populate("user", "name avatar username");
+
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    return res.status(200).json(project);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
