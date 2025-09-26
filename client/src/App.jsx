@@ -6,6 +6,7 @@ import Navbar from "./sections/Navbar.jsx";
 import Hero from "./sections/Hero.jsx";
 import About from "./sections/About.jsx";
 import Projects from "./sections/Projects.jsx";
+import MyProjects from "./sections/MyProjects.jsx";
 import Footer from "./sections/Footer.jsx";
 import Marketplace from "./sections/Marketplace.jsx";
 import {DotPattern} from "./components/DotPattern.jsx";
@@ -27,6 +28,16 @@ const HomePage = () => {
                 <Footer />
             </section>
         </>
+    );
+};
+
+// Dummy Project page component
+const ProjectPage = () => {
+    return (
+        <div className="py-24">
+            <h1 className="text-4xl font-bold mb-4">Project Page</h1>
+            <p className="text-lg text-neutral-400">This is a placeholder for the project page.</p>
+        </div>
     );
 };
 
@@ -72,7 +83,9 @@ export const App = () => {
         <BrowserRouter>
             <Routes>
                 <Route path="/" element={<Layout><HomePage /></Layout>} />
+                <Route path="/project" element={<Layout><ProjectPage /></Layout>} />
                 <Route path="/marketplace" element={<Layout><Marketplace /></Layout>} />
+                <Route path="/my-projects" element={<Layout><MyProjects /></Layout>} />
             </Routes>
         </BrowserRouter>
     )
