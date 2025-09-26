@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   Container,
   Typography,
@@ -19,6 +19,7 @@ import {
 } from '@mui/icons-material';
 import { useAppSelector, useAppDispatch } from '../hooks/useRedux';
 import { setSearchQuery, setCategory, setSortBy, clearFilters } from '../store/slices/filtersSlice';
+import { setProjects } from '../store/slices/projectsSlice';
 import ProjectCard from './ProjectCard';
 
 const ProjectGrid: React.FC = () => {
@@ -75,6 +76,44 @@ const ProjectGrid: React.FC = () => {
 
     return filtered;
   }, [projects, filters]);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3000';
+      try {
+        const res = await fetch(`${apiBase}/api/projects`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const mapped = data.map((p: any) => ({
+          id: p._id,
+          title: p.projectName,
+          description: p.projectDescription,
+          techStack: Array.isArray(p.techStack) ? p.techStack : [],
+          category: 'Web Development',
+          status: 'seeking-contributors',
+          author: {
+            name: p.user?.name || p.user?.username || 'Unknown',
+            avatar: p.user?.avatar || '',
+            university: '',
+          },
+          contributors: 0,
+          lastUpdated: p.updatedAt || p.createdAt,
+          githubUrl: p.projectLink,
+          tags: [],
+          difficulty: 'beginner',
+          estimatedTime: '1-2 weeks',
+          aiHealthScore: 80,
+          projectImgUrl: p.projectImgUrl || undefined,
+        }));
+        console.log(mapped);
+        dispatch(setProjects(mapped));
+      } catch (_) {
+        // noop for now
+      }
+    };
+
+    fetchProjects();
+  }, [dispatch]);
 
   const handleProjectAdopt = (project: any) => {
     console.log('Adopting project:', project.title);
