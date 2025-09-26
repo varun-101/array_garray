@@ -26,6 +26,11 @@ function Navigation() {
                 </Link>
             </li>
             <li className="nav-li">
+                <Link className="nav-link" to="/project">
+                    Project
+                </Link>
+            </li>
+            <li className="nav-li">
                 {location.pathname === "/" ? (
                     <a className="nav-link" href="#work">
                         Projects

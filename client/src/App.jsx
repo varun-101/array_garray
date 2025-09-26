@@ -30,6 +30,16 @@ const HomePage = () => {
     );
 };
 
+// Dummy Project page component
+const ProjectPage = () => {
+    return (
+        <div className="py-24">
+            <h1 className="text-4xl font-bold mb-4">Project Page</h1>
+            <p className="text-lg text-neutral-400">This is a placeholder for the project page.</p>
+        </div>
+    );
+};
+
 // Layout wrapper component
 const Layout = ({ children }) => {
     return (
@@ -72,6 +82,7 @@ export const App = () => {
         <BrowserRouter>
             <Routes>
                 <Route path="/" element={<Layout><HomePage /></Layout>} />
+                <Route path="/project" element={<Layout><ProjectPage /></Layout>} />
                 <Route path="/marketplace" element={<Layout><Marketplace /></Layout>} />
             </Routes>
         </BrowserRouter>
