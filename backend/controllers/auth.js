@@ -40,22 +40,22 @@ export const githubCallback = async (req, res) => {
     // Save or update user in database
     const user = await DatabaseService.createOrUpdateUser(githubUser, accessToken);
 
-    // Return user data and access token for GitHub API calls
-    res.json({ 
-      user: {
-        id: user._id,
-        githubId: user.githubId,
-        username: user.username,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-        githubUrl: user.githubUrl,
-        lastLoginAt: user.lastLoginAt,
-        stats: user.stats
-      },
-      accessToken,
-      message: "Successfully authenticated with GitHub"
-    });
+    // Redirect back to client with token and user info in URL hash
+    const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+    const safeUser = {
+      id: user._id,
+      githubId: user.githubId,
+      username: user.username,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      githubUrl: user.githubUrl,
+      lastLoginAt: user.lastLoginAt,
+    };
+
+    const encodedUser = encodeURIComponent(Buffer.from(JSON.stringify(safeUser)).toString("base64"));
+    const redirectTo = `${clientUrl}/#accessToken=${encodeURIComponent(accessToken)}&user=${encodedUser}`;
+    return res.redirect(redirectTo);
 
   } catch (err) {
     console.error(err);
