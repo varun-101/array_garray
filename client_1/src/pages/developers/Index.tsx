@@ -1,8 +1,8 @@
 import React from 'react';
-import Navigation from '../components/Navigation';
-import HeroSection from '../components/HeroSection';
-import ProjectGrid from '../components/ProjectGrid';
-import Footer from '../components/Footer';
+import Navigation from '../../components/Navigation';
+import HeroSection from '../../components/HeroSection';
+import ProjectGrid from '../../components/ProjectGrid';
+import Footer from '../../components/Footer';
 import { Box } from '@mui/material';
 
 const Index = () => {

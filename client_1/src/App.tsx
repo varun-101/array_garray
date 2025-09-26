@@ -8,13 +8,13 @@ import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import { store } from "./store/store";
 import { theme } from "./theme/theme";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import ProjectDetails from "./pages/ProjectDetails";
-import AddProject from "./pages/AddProject";
-import MyProjects from "./pages/MyProjects";
-import Explore from "./pages/Explore";
-import Profile from "./pages/Profile";
+import Index from "./pages/developers/Index";
+import NotFound from "./pages/developers/NotFound";
+import ProjectDetails from "./pages/developers/ProjectDetails";
+import AddProject from "./pages/developers/AddProject";
+import MyProjects from "./pages/developers/MyProjects";
+import Explore from "./pages/developers/Explore";
+import Profile from "./pages/developers/Profile";
 
 const queryClient = new QueryClient();
 

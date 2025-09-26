@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import {
   Box,
   Typography,
@@ -16,8 +16,8 @@ import {
 } from '@mui/material';
 // using Box-based CSS grid for compatibility
 import { GitHub as GitHubIcon, Launch as LaunchIcon, Refresh as RefreshIcon, FolderOpen as FolderOpenIcon } from '@mui/icons-material';
-import Navigation from '../components/Navigation';
-import Footer from '../components/Footer';
+import Navigation from '../../components/Navigation';
+import Footer from '../../components/Footer';
 
 interface RepoItem {
   name: string;

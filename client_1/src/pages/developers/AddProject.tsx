@@ -20,9 +20,9 @@ import {
   Close as CloseIcon,
   Upload as UploadIcon,
 } from '@mui/icons-material';
-import { useAppDispatch } from '../hooks/useRedux';
-import { addProject } from '../store/slices/projectsSlice';
-import Navigation from '../components/Navigation';
+import { useAppDispatch } from '../../hooks/useRedux';
+import { addProject } from '../../store/slices/projectsSlice';
+import Navigation from '../../components/Navigation';
 
 const AddProject: React.FC = () => {
   const navigate = useNavigate();
