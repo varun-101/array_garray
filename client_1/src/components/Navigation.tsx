@@ -30,7 +30,16 @@ import { Link, useNavigate } from 'react-router-dom';
 
 
 const Navigation: React.FC = () => {
-  const { isAuthenticated, user, loginWithGithub, logout } = useAuth();
+  const { 
+    isAuthenticated, 
+    isMentorAuthenticated  , 
+    userType, 
+    user, 
+    mentor, 
+    loginWithGithub, 
+    logout 
+  } = useAuth();
+  // const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [notificationAnchorEl, setNotificationAnchorEl] = React.useState<null | HTMLElement>(null);
 
@@ -131,30 +140,34 @@ const Navigation: React.FC = () => {
           >
             Explore
           </Button>
-          <Button
-            variant="text"
-            sx={{
-              color: 'white',
-              '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
-            }}
-            onClick={() => navigate('/my-projects')}
-          >
-            My Projects
-          </Button>
+          {userType === 'developer' && (
+            <Button
+              variant="text"
+              sx={{
+                color: 'white',
+                '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
+              }}
+              onClick={() => navigate('/my-projects')}
+            >
+              My Projects
+            </Button>
+          )}
           
-          {isAuthenticated ? (
+          {isAuthenticated || isMentorAuthenticated ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Button onClick={() => navigate('/add-project')}
-                startIcon={<AddIcon />}
-                variant="contained"
-                sx={{
-                  bgcolor: 'hsl(220, 85%, 55%)',
-                  color: 'white',
-                  '&:hover': { bgcolor: 'hsl(220, 85%, 65%)' }
-                }}
-              >
-                Submit Project
-              </Button>
+             {userType === 'developer' && (
+                <Button onClick={() => navigate('/add-project')}
+                  startIcon={<AddIcon />}
+                  variant="contained"
+                  sx={{
+                    bgcolor: 'hsl(var(--accent))',
+                    color: 'white',
+                    '&:hover': { bgcolor: 'hsl(var(--accent))' }
+                  }}
+                >
+                  Submit Project
+                </Button>
+              )}
               
               <IconButton 
                 color="inherit"
@@ -170,8 +183,8 @@ const Navigation: React.FC = () => {
                 sx={{ p: 0.5 }}
               >
                 <Avatar
-                  src={user?.avatar}
-                  alt={user?.name}
+                  src={userType === 'developer' ? user?.avatar : mentor?.profilePhotoUrl}
+                  alt={userType === 'developer' ? user?.name : mentor?.name}
                   sx={{ width: 32, height: 32 }}
                 />
               </IconButton>
@@ -212,8 +225,15 @@ const Navigation: React.FC = () => {
           onClose={handleMenuClose}
           sx={{ mt: 1 }}
         >
-          <MenuItem onClick={() => { handleMenuClose(); navigate('/profile'); }}>Profile</MenuItem>
-          <MenuItem onClick={handleMenuClose}>My Projects</MenuItem>
+          <MenuItem onClick={() => { 
+            handleMenuClose(); 
+            navigate(userType === 'developer' ? '/profile' : '/mentor-profile'); 
+          }}>
+            Profile
+          </MenuItem>
+          {userType === 'developer' && (
+            <MenuItem onClick={handleMenuClose}>My Projects</MenuItem>
+          )}
           <MenuItem onClick={handleMenuClose}>Settings</MenuItem>
           <MenuItem onClick={() => { handleMenuClose(); logout(); }}>Logout</MenuItem>
         </Menu>

@@ -18,26 +18,28 @@ import {
   IconButton,
   CircularProgress,
   Alert,
-} from "@mui/material";
+  TextField,
+  Rating,
+  Avatar,
+  Divider,
+  Snackbar,
+} from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
   GitHub as GitHubIcon,
   Description as DocumentationIcon,
   Download as DownloadIcon,
   Favorite as FavoriteIcon,
-} from "@mui/icons-material";
-import { useAppSelector } from "../../hooks/useRedux";
-import Navigation from "../../components/Navigation";
-import AISummary from "../../components/AISummary";
-import CodeImplementations from "../../components/CodeImplementations";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "../../components/ui/carousel";
-import MermaidChart from "@/components/MermaidChart";
+  Send as SendIcon,
+
+} from '@mui/icons-material';
+import { useAppSelector } from '../../hooks/useRedux';
+import Navigation from '../../components/Navigation';
+import AISummary from '../../components/AISummary';
+import CodeImplementations from '../../components/CodeImplementations';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '../../components/ui/carousel';
+import { useAuth } from '../../context/AuthContext';
+import MermaidChart from "../../components/MermaidChart";
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -65,6 +67,20 @@ interface BackendProject {
     username?: string;
     avatar?: string;
   };
+
+  feedback: Array<{
+    _id: string;
+    mentor: {
+      _id: string;
+      name: string;
+      organization: string;
+      role: string;
+      profilePhotoUrl?: string;
+    };
+    feedbackText: string;
+    rating?: number;
+    createdAt: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 }
@@ -86,6 +102,7 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const ProjectDetails: React.FC = () => {
+  const { userType, mentor } = useAuth();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [tabValue, setTabValue] = useState(0);
@@ -93,9 +110,19 @@ const ProjectDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackRating, setFeedbackRating] = useState<number | null>(null);
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success' as 'success' | 'error' | 'warning' | 'info',
+  });
+  
+  const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3000';
   const [mermaidCode, setMermaidCode] = useState("");
-  const apiBase =
-    (import.meta as any).env?.VITE_API_BASE_URL || "http://localhost:3000";
+  // const apiBase =
+  //   (import.meta as any).env?.VITE_API_BASE_URL || "http://localhost:3000";
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -204,6 +231,56 @@ const ProjectDetails: React.FC = () => {
     // TODO: Show code examples modal or navigate to examples page
     console.log("Viewing examples for:", implementationId);
     alert(`Showing code examples for: ${implementationId}`);
+  }
+  const handleSubmitFeedback = async () => {
+    if (!feedbackText.trim() || !mentor) {
+      setSnackbar({
+        open: true,
+        message: 'Please provide feedback text',
+        severity: 'error'
+      });
+      return;
+    }
+
+    setSubmittingFeedback(true);
+    try {
+      const response = await fetch(`${apiBase}/api/projects/${id}/feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          mentorId: mentor._id,
+          feedbackText: feedbackText.trim(),
+          rating: feedbackRating
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to submit feedback');
+      }
+
+      const updatedProject = await response.json();
+      setProject(updatedProject);
+      setFeedbackText('');
+      setFeedbackRating(null);
+      
+      setSnackbar({
+        open: true,
+        message: 'Feedback submitted successfully!',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      setSnackbar({
+        open: true,
+        message: error instanceof Error ? error.message : 'Failed to submit feedback',
+        severity: 'error'
+      });
+    } finally {
+      setSubmittingFeedback(false);
+    }
   };
 
   return (
@@ -251,6 +328,9 @@ const ProjectDetails: React.FC = () => {
             <Tab label="Roadmap" />
             <Tab label="AI Summary" />
             <Tab label="Code Implementations" />
+            {userType === 'developer' && project?.feedback && project.feedback.length > 0 && (
+              <Tab label={`Feedback (${project.feedback.length})`} />
+            )}
           </Tabs>
         </Box>
 
@@ -661,7 +741,129 @@ const ProjectDetails: React.FC = () => {
             onViewExamples={handleViewExamples}
           />
         </TabPanel>
+    
+    {/* Feedback Tab - Only for Developers */}
+    {userType === 'developer' && (
+          <TabPanel value={tabValue} index={5}>
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
+                Mentor Feedback
+              </Typography>
+              {project?.feedback && project.feedback.length > 0 ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {project.feedback.map((feedback, index) => (
+                    <Card key={feedback._id} sx={{ mb: 2 }}>
+                      <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 2 }}>
+                          <Avatar 
+                            src={feedback.mentor.profilePhotoUrl} 
+                            alt={feedback.mentor.name}
+                            sx={{ width: 48, height: 48 }}
+                          />
+                          <Box sx={{ flexGrow: 1 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                              {feedback.mentor.name}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {feedback.mentor.role} at {feedback.mentor.organization}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {new Date(feedback.createdAt).toLocaleDateString()}
+                            </Typography>
+                          </Box>
+                          {feedback.rating && (
+                            <Rating value={feedback.rating} readOnly size="small" />
+                          )}
+                        </Box>
+                        <Typography variant="body1">
+                          {feedback.feedbackText}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </Box>
+              ) : (
+                <Card>
+                  <CardContent>
+                    <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                      No feedback received yet
+                    </Typography>
+                  </CardContent>
+                </Card>
+              )}
+            </Box>
+          </TabPanel>
+        )}
+
+        {/* Mentor Feedback Input Section */}
+        {userType === 'mentor' && mentor && (
+          <Box sx={{ mt: 4, mb: 4 }}>
+            <Divider sx={{ mb: 3 }} />
+            <Card>
+              <CardContent>
+                <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
+                  Provide Feedback
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  Share your thoughts and suggestions to help improve this project
+                </Typography>
+                
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="body1" sx={{ mb: 1 }}>
+                    Rating (Optional)
+                  </Typography>
+                  <Rating
+                    value={feedbackRating}
+                    onChange={(event, newValue) => setFeedbackRating(newValue)}
+                    size="large"
+                  />
+                </Box>
+
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={4}
+                  value={feedbackText}
+                  onChange={(e) => setFeedbackText(e.target.value)}
+                  placeholder="Share your feedback, suggestions, or recommendations for this project..."
+                  variant="outlined"
+                  sx={{ mb: 3 }}
+                />
+
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button
+                    variant="contained"
+                    startIcon={<SendIcon />}
+                    onClick={handleSubmitFeedback}
+                    disabled={submittingFeedback || !feedbackText.trim()}
+                    sx={{
+                      bgcolor: 'hsl(var(--primary))',
+                      '&:hover': { bgcolor: 'hsl(var(--primary-hover))' }
+                    }}
+                  >
+                    {submittingFeedback ? 'Submitting...' : 'Submit Feedback'}
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
+          </Box>
+        )}
+
+
       </Container>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+      >
+        <Alert
+          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </>
   );
 };
