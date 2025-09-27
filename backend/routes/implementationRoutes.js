@@ -6,7 +6,9 @@ import {
   getImplementationHistory,
   getImplementationStatistics,
   getBatchImplementation,
-  generateImplementationPlan 
+  generateImplementationPlan,
+  getDeploymentInfo,
+  getRepositoryDeployments
 } from '../controllers/codeImplementationController.js';
 
 const router = express.Router();
@@ -97,5 +99,22 @@ router.get('/batch/:batchId', getBatchImplementation);
  * @access Public
  */
 router.post('/plan', generateImplementationPlan);
+
+/**
+ * @route GET /api/implementation/deployment/:implementationId
+ * @desc Get deployment information for a specific implementation
+ * @param implementationId - Implementation ID (required)
+ * @access Public
+ */
+router.get('/deployment/:implementationId', getDeploymentInfo);
+
+/**
+ * @route GET /api/implementation/deployments
+ * @desc Get all deployments for a repository
+ * @query repoUrl - Repository URL (required)
+ * @query limit - Number of deployments to return (optional, default: 10)
+ * @access Public
+ */
+router.get('/deployments', getRepositoryDeployments);
 
 export default router;

@@ -1,6 +1,159 @@
 import GeminiCodeService from '../services/geminiCodeService.js';
 import AICacheService from '../services/aiCacheService.js';
 import Implementation from '../models/Implementation.js';
+import { deployImplementationBranch } from './vercelController.js';
+import deploymentCacheService from '../services/deploymentCacheService.js';
+
+/**
+ * Helper function to trigger deployment for an implementation with caching
+ */
+const triggerDeployment = async (implementationRecord, repoUrl, projectName, branchName) => {
+  try {
+    console.log(`Checking deployment for implementation: ${implementationRecord.implementationId}`);
+    
+    // First, check if deployment already exists in cache/database
+    const existingDeployment = await deploymentCacheService.findExistingDeployment(
+      repoUrl, 
+      branchName, 
+      projectName
+    );
+
+    if (existingDeployment && existingDeployment.success) {
+      console.log(`Using cached deployment: ${existingDeployment.url}`);
+      
+      // Update the implementation record with cached deployment data
+      await implementationRecord.updateDeployment({
+        success: true,
+        url: existingDeployment.url,
+        deploymentId: existingDeployment.deploymentId,
+        status: 'ready',
+        branchName: branchName,
+        deployedAt: existingDeployment.deployedAt
+      });
+      
+      await implementationRecord.addLog('info', 'Using cached deployment', {
+        deploymentUrl: existingDeployment.url,
+        deploymentId: existingDeployment.deploymentId,
+        cached: true
+      });
+
+      return {
+        success: true,
+        deploymentUrl: existingDeployment.url,
+        deploymentId: existingDeployment.deploymentId,
+        cached: true
+      };
+    }
+
+    // No existing deployment found, proceed with new deployment
+    console.log(`Creating new deployment for implementation: ${implementationRecord.implementationId}`);
+    
+    // Update deployment status to pending
+    await implementationRecord.updateDeployment({
+      success: false,
+      status: 'pending',
+      branchName: branchName
+    });
+    
+    await implementationRecord.addLog('info', 'Deployment initiated', { 
+      branchName,
+      deploymentStatus: 'pending'
+    });
+
+    // Create a mock request object for the deployment function
+    const mockReq = {
+      body: {
+        repoUrl,
+        branchName,
+        projectName,
+        implementationId: implementationRecord.implementationId,
+        projectId: implementationRecord.projectId
+      }
+    };
+
+    // Create a mock response object to capture the result
+    let deploymentResult = null;
+    const mockRes = {
+      status: (code) => ({
+        json: (data) => {
+          deploymentResult = { statusCode: code, data };
+        }
+      })
+    };
+
+    // Call the deployment function
+    await deployImplementationBranch(mockReq, mockRes);
+
+    if (deploymentResult && deploymentResult.statusCode === 201 && deploymentResult.data.success) {
+      // Deployment successful - cache the result
+      const deploymentData = {
+        success: true,
+        url: deploymentResult.data.deploymentUrl,
+        deploymentId: deploymentResult.data.deploymentId,
+        status: 'ready',
+        branchName: branchName,
+        deployedAt: new Date()
+      };
+
+      // Cache the deployment result
+      await deploymentCacheService.cacheDeploymentResult(
+        repoUrl,
+        branchName,
+        projectName,
+        deploymentData,
+        implementationRecord.implementationId
+      );
+
+      await implementationRecord.addLog('success', 'Deployment completed successfully', {
+        deploymentUrl: deploymentResult.data.deploymentUrl,
+        deploymentId: deploymentResult.data.deploymentId
+      });
+
+      console.log(`Deployment successful: ${deploymentResult.data.deploymentUrl}`);
+      return {
+        success: true,
+        deploymentUrl: deploymentResult.data.deploymentUrl,
+        deploymentId: deploymentResult.data.deploymentId,
+        cached: false
+      };
+    } else {
+      // Deployment failed
+      const errorMessage = deploymentResult?.data?.error || 'Unknown deployment error';
+      await implementationRecord.updateDeployment({
+        success: false,
+        status: 'error',
+        error: errorMessage
+      });
+      
+      await implementationRecord.addLog('error', 'Deployment failed', {
+        error: errorMessage
+      });
+
+      console.error(`Deployment failed: ${errorMessage}`);
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+  } catch (error) {
+    console.error('Deployment trigger error:', error);
+    
+    await implementationRecord.updateDeployment({
+      success: false,
+      status: 'error',
+      error: error.message
+    });
+    
+    await implementationRecord.addLog('error', 'Deployment trigger failed', {
+      error: error.message
+    });
+
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
 
 /**
  * Generate code implementation for a single recommendation
@@ -14,7 +167,9 @@ export const generateImplementation = async (req, res) => {
       difficulty = 'intermediate',
       category = 'Web Development',
       implementation,
-      analysisData = null
+      analysisData = null,
+      customPrompt = null,
+      mentorFeedback = null
     } = req.body;
 
     // Validate required fields
@@ -52,6 +207,8 @@ export const generateImplementation = async (req, res) => {
       status: 'processing',
       progress: 0,
       analysisData,
+      customPrompt,
+      mentorFeedback,
       userId: req.user?.id,
       sessionId: req.sessionID,
       startedAt: new Date()
@@ -77,21 +234,24 @@ export const generateImplementation = async (req, res) => {
       techStack,
       difficulty,
       category,
-      analysisData
+      analysisData,
+      customPrompt,
+      mentorFeedback
     };
     await geminiService.setupGeminiConfig(projectDir, projectContext);
     await implementationRecord.updateStatus('processing', 40);
     await implementationRecord.addLog('info', 'Gemini configuration setup completed');
 
     // Generate implementation
-    const result = await geminiService.generateImplementation(projectDir, implementation);
+    const result = await geminiService.generateImplementation(projectDir, implementation, { customPrompt, mentorFeedback });
     await implementationRecord.updateStatus('processing', 80);
     await implementationRecord.addLog('info', 'Code generation completed', { 
       success: result.success,
       branchName: result.branchName,
       modifiedFiles: result.modifiedFiles 
     });
-
+    console.log(result);
+    
     // Create pull request if implementation was successful
     let pullRequestResult = null;
     if (result.success) {
@@ -114,6 +274,25 @@ export const generateImplementation = async (req, res) => {
         };
         await implementationRecord.addLog('warn', 'Pull request creation failed', { 
           error: prError.message 
+        });
+      }
+    }
+
+    // Trigger deployment if implementation was successful (regardless of PR status)
+    let deploymentResult = null;
+    if (result.success && result.branchName) {
+      try {
+        console.log(`Triggering deployment for branch: ${result.branchName}`);
+        deploymentResult = await triggerDeployment(
+          implementationRecord, 
+          repoUrl, 
+          projectName, 
+          result.branchName
+        );
+      } catch (deploymentError) {
+        console.warn('Deployment trigger failed:', deploymentError.message);
+        await implementationRecord.addLog('warn', 'Deployment trigger failed', { 
+          error: deploymentError.message 
         });
       }
     }
@@ -177,6 +356,7 @@ export const generateImplementation = async (req, res) => {
       },
       codeGeneration: result,
       pullRequest: pullRequestResult,
+      deployment: deploymentResult,
       metadata: {
         projectName,
         branchName: result.branchName,
@@ -231,7 +411,9 @@ export const batchImplementation = async (req, res) => {
       category = 'Web Development',
       implementations = [],
       analysisData = null,
-      createSeparatePRs = true
+      createSeparatePRs = true,
+      customPrompt = null,
+      mentorFeedback = null
     } = req.body;
 
     // Validate required fields
@@ -277,6 +459,8 @@ export const batchImplementation = async (req, res) => {
         status: 'pending',
         progress: 0,
         analysisData,
+        customPrompt,
+        mentorFeedback,
         userId: req.user?.id,
         sessionId: req.sessionID,
         batchId,
@@ -297,14 +481,16 @@ export const batchImplementation = async (req, res) => {
       techStack,
       difficulty,
       category,
-      analysisData
+      analysisData,
+      customPrompt,
+      mentorFeedback
     };
     await geminiService.setupGeminiConfig(projectDir, projectContext);
 
     // Process implementations
-    const results = await geminiService.batchImplementation(projectDir, implementations);
+    const results = await geminiService.batchImplementation(projectDir, implementations, { customPrompt, mentorFeedback });
 
-    // Update implementation records with results
+    // Update implementation records with results and trigger deployments
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
       const record = implementationRecords[i];
@@ -316,6 +502,26 @@ export const batchImplementation = async (req, res) => {
             await record.updatePullRequest(result.pullRequest);
           }
           
+          // Trigger deployment for successful implementations (regardless of PR status)
+          if (result.success && result.branchName) {
+            try {
+              console.log(`Triggering deployment for batch implementation: ${result.branchName}`);
+              const deploymentResult = await triggerDeployment(
+                record, 
+                repoUrl, 
+                projectName, 
+                result.branchName
+              );
+              // Store deployment result in the result object
+              result.deployment = deploymentResult;
+            } catch (deploymentError) {
+              console.warn(`Deployment trigger failed for batch item ${i}:`, deploymentError.message);
+              await record.addLog('warn', 'Deployment trigger failed', { 
+                error: deploymentError.message 
+              });
+            }
+          }
+          
           const finalStatus = result.success ? 'completed' : 'failed';
           await record.updateStatus(finalStatus, 100);
           
@@ -323,7 +529,8 @@ export const batchImplementation = async (req, res) => {
             await record.addLog('success', 'Batch implementation completed successfully', {
               branchName: result.branchName,
               modifiedFiles: result.modifiedFiles,
-              pullRequestUrl: result.pullRequest?.url
+              pullRequestUrl: result.pullRequest?.url,
+              deploymentUrl: result.deployment?.deploymentUrl
             });
           } else {
             await record.addLog('error', 'Batch implementation failed', {
@@ -930,6 +1137,76 @@ function generatePlanRecommendations(plan, analysisData) {
   return recommendations;
 }
 
+/**
+ * Get deployment information for an implementation
+ */
+export const getDeploymentInfo = async (req, res) => {
+  try {
+    const { implementationId } = req.params;
+
+    if (!implementationId) {
+      return res.status(400).json({
+        error: "Implementation ID is required"
+      });
+    }
+
+    const deploymentInfo = await deploymentCacheService.getDeploymentStatus(implementationId);
+
+    if (deploymentInfo) {
+      return res.json({
+        success: true,
+        deployment: deploymentInfo
+      });
+    } else {
+      return res.status(404).json({
+        success: false,
+        error: "Deployment information not found"
+      });
+    }
+  } catch (error) {
+    console.error('Failed to get deployment info:', error);
+    return res.status(500).json({
+      error: "Failed to retrieve deployment information",
+      details: error.message
+    });
+  }
+};
+
+/**
+ * Get all deployments for a repository
+ */
+export const getRepositoryDeployments = async (req, res) => {
+  try {
+    const { repoUrl } = req.query;
+    const { limit = 10 } = req.query;
+
+    if (!repoUrl) {
+      return res.status(400).json({
+        error: "Repository URL is required"
+      });
+    }
+
+    const deployments = await deploymentCacheService.getRepositoryDeployments(repoUrl, parseInt(limit));
+
+    return res.json({
+      success: true,
+      deployments,
+      metadata: {
+        repoUrl,
+        limit: parseInt(limit),
+        count: deployments.length,
+        retrievedAt: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Failed to get repository deployments:', error);
+    return res.status(500).json({
+      error: "Failed to retrieve repository deployments",
+      details: error.message
+    });
+  }
+};
+
 export default {
   generateImplementation,
   batchImplementation,
@@ -937,5 +1214,7 @@ export default {
   getImplementationHistory,
   getImplementationStatistics,
   getBatchImplementation,
-  generateImplementationPlan
+  generateImplementationPlan,
+  getDeploymentInfo,
+  getRepositoryDeployments
 };

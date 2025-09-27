@@ -1,8 +1,18 @@
+import mongoose from "mongoose";
 import DatabaseService from "../services/databaseService.js";
 import Projects from "../models/Projects.js";
 import Repository from "../models/Repository.js";
 import User from "../models/User.js";
 import GitHubService from "../services/githubService.js";
+
+// Helper function to validate ObjectId
+const validateObjectId = (id, res) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    res.status(400).json({ error: "Invalid project ID format" });
+    return false;
+  }
+  return true;
+};
 
 export const uploadProject = async (req, res) => {
   try {
@@ -92,6 +102,9 @@ export const getProjectById = async (req, res) => {
       return res.status(400).json({ error: "Project ID is required" });
     }
 
+    // Validate ObjectId format
+    if (!validateObjectId(id, res)) return;
+
     const project = await Projects.findById(id)
     .populate("user", "name avatar username")
     .populate("collaborators.user", "name avatar username")
@@ -126,6 +139,9 @@ export const submitFeedback = async (req, res) => {
         error: "Project ID, mentor ID, and feedback text are required" 
       });
     }
+
+    // Validate ObjectId format
+    if (!validateObjectId(id, res)) return;
 
     const project = await Projects.findById(id);
     if (!project) {
@@ -169,6 +185,9 @@ export const updateDeployedUrl = async (req, res) => {
       });
     }
 
+    // Validate ObjectId format
+    if (!validateObjectId(id, res)) return;
+
     const project = await Projects.findById(id);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
@@ -200,6 +219,9 @@ export const adoptProject = async (req, res) => {
         error: "Project ID and User ID are required" 
       });
     }
+
+    // Validate ObjectId format
+    if (!validateObjectId(id, res)) return;
 
     const project = await Projects.findById(id)
       .populate("user", "name avatar username githubId accessToken");
@@ -313,6 +335,9 @@ export const respondToInvitation = async (req, res) => {
       });
     }
 
+    // Validate ObjectId format
+    if (!validateObjectId(id, res)) return;
+
     const project = await Projects.findById(id);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
@@ -358,6 +383,9 @@ export const getCollaborationStatus = async (req, res) => {
         error: "Project ID and User ID are required" 
       });
     }
+
+    // Validate ObjectId format
+    if (!validateObjectId(id, res)) return;
 
     const project = await Projects.findById(id)
       .populate("collaborators.user", "name avatar username githubId")
@@ -421,6 +449,9 @@ export const syncGitHubCollaborationStatus = async (req, res) => {
         error: "Project ID and User ID are required" 
       });
     }
+
+    // Validate ObjectId format
+    if (!validateObjectId(id, res)) return;
 
     const project = await Projects.findById(id)
       .populate("user", "name avatar username githubId accessToken");
@@ -509,6 +540,9 @@ export const getProjectCommits = async (req, res) => {
     if (!accessToken) {
       return res.status(400).json({ error: "Access token is required" });
     }
+
+    // Validate ObjectId format
+    if (!validateObjectId(id, res)) return;
 
     // Get project details
     const project = await Projects.findById(id);

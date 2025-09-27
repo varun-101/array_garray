@@ -20,7 +20,7 @@ const implementationSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['Security', 'Performance', 'Testing', 'Quality', 'Documentation', 'DevOps', 'Feature'],
+    enum: ['Security', 'Performance', 'Testing', 'Quality', 'Documentation', 'DevOps', 'Feature', 'Custom', 'Mentor Feedback'],
     default: 'Quality'
   },
   difficulty: {
@@ -130,8 +130,56 @@ const implementationSchema = new mongoose.Schema({
     }
   },
 
+  // Deployment information
+  deployment: {
+    success: {
+      type: Boolean,
+      default: false
+    },
+    url: {
+      type: String,
+      required: false
+    },
+    deploymentId: {
+      type: String,
+      required: false
+    },
+    branchName: {
+      type: String,
+      required: false
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'building', 'ready', 'error', 'cancelled'],
+      default: 'pending'
+    },
+    error: {
+      type: String,
+      required: false
+    },
+    deployedAt: {
+      type: Date,
+      required: false
+    },
+    buildTime: {
+      type: Number, // in milliseconds
+      required: false
+    }
+  },
+
   // AI analysis data used for implementation
   analysisData: {
+    type: mongoose.Schema.Types.Mixed,
+    required: false
+  },
+
+  // Custom prompt and mentor feedback
+  customPrompt: {
+    type: String,
+    required: false,
+    trim: true
+  },
+  mentorFeedback: {
     type: mongoose.Schema.Types.Mixed,
     required: false
   },
@@ -308,6 +356,16 @@ implementationSchema.methods.updatePullRequest = function(prData) {
   this.pullRequest = {
     ...this.pullRequest,
     ...prData
+  };
+  return this.save();
+};
+
+// Method to update deployment information
+implementationSchema.methods.updateDeployment = function(deploymentData) {
+  this.deployment = {
+    ...this.deployment,
+    ...deploymentData,
+    deployedAt: deploymentData.success ? new Date() : this.deployment.deployedAt
   };
   return this.save();
 };

@@ -25,7 +25,12 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Divider
+  Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField
 } from '@mui/material';
 import {
   Code as CodeIcon,
@@ -46,7 +51,16 @@ import {
   Description as DescriptionIcon,
   AccessTime as AccessTimeIcon,
   Visibility as VisibilityIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  School as SchoolIcon,
+  RateReview as RateReviewIcon,
+  Edit as EditIcon,
+  Send as SendIcon,
+  Person as PersonIcon,
+  Star as StarIcon,
+  AutoFixHigh as AutoFixHighIcon,
+  CloudUpload as CloudUploadIcon,
+  Public as PublicIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImplementationHistory from './ImplementationHistory';
@@ -67,6 +81,7 @@ interface CodeImplementationsProps {
   projectName: string;
   techStack: string[];
   repoUrl?: string;
+  projectId?: string;
   onImplementationStart?: (implementationIds: string[]) => void;
   onGeneratePlan?: (implementationIds: string[]) => void;
   onViewExamples?: (implementationId: string) => void;
@@ -78,6 +93,7 @@ const CodeImplementations: React.FC<CodeImplementationsProps> = ({
   projectName,
   techStack,
   repoUrl,
+  projectId,
   onImplementationStart,
   onGeneratePlan,
   onViewExamples,
@@ -97,6 +113,10 @@ const CodeImplementations: React.FC<CodeImplementationsProps> = ({
     severity: 'info'
   });
   const [recentImplementations, setRecentImplementations] = useState<any[]>([]);
+  const [mentorFeedback, setMentorFeedback] = useState<any[]>([]);
+  const [customPrompt, setCustomPrompt] = useState('');
+  const [isSubmittingCustomPrompt, setIsSubmittingCustomPrompt] = useState(false);
+  const [showCustomPromptDialog, setShowCustomPromptDialog] = useState(false);
   
   const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3000';
 
@@ -113,6 +133,22 @@ const CodeImplementations: React.FC<CodeImplementationsProps> = ({
       }
     } catch (error) {
       console.warn('Failed to fetch recent implementations:', error);
+    }
+  };
+
+  // Fetch mentor feedback
+  const fetchMentorFeedback = async () => {
+    if (!projectId) return;
+    
+    try {
+      const response = await fetch(`${apiBase}/api/projects/${projectId}`);
+      const data = await response.json();
+      
+      if (data.feedback && Array.isArray(data.feedback)) {
+        setMentorFeedback(data.feedback);
+      }
+    } catch (error) {
+      console.warn('Failed to fetch mentor feedback:', error);
     }
   };
 
@@ -190,7 +226,10 @@ const CodeImplementations: React.FC<CodeImplementationsProps> = ({
     if (showHistory && repoUrl) {
       fetchRecentImplementations();
     }
-  }, [repoUrl, showHistory]);
+    if (projectId) {
+      fetchMentorFeedback();
+    }
+  }, [repoUrl, showHistory, projectId]);
 
   // Convert AI recommendations to implementable actions
   const getImplementationSuggestions = () => {
@@ -318,10 +357,21 @@ const CodeImplementations: React.FC<CodeImplementationsProps> = ({
           updateLoaderStep('pr', 'processing');
           await new Promise(resolve => setTimeout(resolve, 500)); // Simulate PR creation
           updateLoaderStep('pr', 'completed');
-          
-          showNotification(`Implementation successful! Pull request created: ${result.pullRequest.url}`, 'success');
         } else {
           updateLoaderStep('pr', 'failed');
+        }
+        
+        // Check for deployment (regardless of PR status)
+        if (result.deployment?.success) {
+          const deploymentMessage = result.deployment.cached 
+            ? `Implementation successful! Using existing deployment: ${result.deployment.deploymentUrl}`
+            : result.pullRequest?.success 
+              ? `Implementation successful! Pull request created and deployed: ${result.deployment.deploymentUrl}`
+              : `Implementation successful! Branch deployed: ${result.deployment.deploymentUrl}`;
+          showNotification(deploymentMessage, 'success');
+        } else if (result.pullRequest?.success) {
+          showNotification(`Implementation successful! Pull request created: ${result.pullRequest.url}`, 'success');
+        } else {
           showNotification(`Implementation completed! Branch: ${result.codeGeneration.branchName}`, 'success');
         }
         
@@ -362,6 +412,224 @@ const CodeImplementations: React.FC<CodeImplementationsProps> = ({
       onViewExamples(implementationId);
     } else {
       alert(`Showing code examples for: ${implementationId}`);
+    }
+  };
+
+  // Handle custom prompt submission
+  const handleCustomPromptSubmit = async () => {
+    if (!customPrompt.trim() || !repoUrl) {
+      showNotification('Please enter a custom prompt and ensure repository URL is available', 'warning');
+      return;
+    }
+
+    setIsSubmittingCustomPrompt(true);
+    
+    try {
+      const customImplementation = {
+        id: `custom-${Date.now()}`,
+        title: 'Custom Implementation',
+        description: customPrompt,
+        difficulty: 'Intermediate',
+        estimatedTime: '2-4 hours',
+        priority: 'Medium',
+        category: 'Custom'
+      };
+
+      // Initialize loader
+      initializeLoaderSteps('Custom Implementation');
+
+      // Step 1: Workspace initialization
+      updateLoaderStep('workspace', 'processing');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      updateLoaderStep('workspace', 'completed');
+
+      // Step 2: AI configuration
+      updateLoaderStep('config', 'processing');
+      await new Promise(resolve => setTimeout(resolve, 800));
+      updateLoaderStep('config', 'completed');
+
+      // Step 3: Code generation with custom prompt
+      updateLoaderStep('generation', 'processing');
+      
+      const response = await fetch(`${apiBase}/api/implementation/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repoUrl,
+          projectName,
+          techStack,
+          implementation: customImplementation,
+          analysisData: aiAnalysis,
+          customPrompt: customPrompt
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        updateLoaderStep('generation', 'completed');
+        
+        // Step 4: Pull request creation
+        if (result.pullRequest?.success) {
+          updateLoaderStep('pr', 'processing');
+          await new Promise(resolve => setTimeout(resolve, 500));
+          updateLoaderStep('pr', 'completed');
+        } else {
+          updateLoaderStep('pr', 'failed');
+        }
+        
+        // Check for deployment (regardless of PR status)
+        if (result.deployment?.success) {
+          const deploymentMessage = result.deployment.cached 
+            ? `Custom implementation successful! Using existing deployment: ${result.deployment.deploymentUrl}`
+            : result.pullRequest?.success 
+              ? `Custom implementation successful! Pull request created and deployed: ${result.deployment.deploymentUrl}`
+              : `Custom implementation successful! Branch deployed: ${result.deployment.deploymentUrl}`;
+          showNotification(deploymentMessage, 'success');
+        } else if (result.pullRequest?.success) {
+          showNotification(`Custom implementation successful! Pull request created: ${result.pullRequest.url}`, 'success');
+        } else {
+          showNotification(`Custom implementation completed! Branch: ${result.codeGeneration.branchName}`, 'success');
+        }
+        
+        if (onImplementationStart) {
+          onImplementationStart([customImplementation.id]);
+        }
+        
+        // Refresh recent implementations
+        fetchRecentImplementations();
+        
+        // Clear custom prompt and close dialog
+        setCustomPrompt('');
+        setShowCustomPromptDialog(false);
+        
+        // Close loader after a delay
+        setTimeout(() => {
+          closeLoader();
+        }, 2000);
+      } else {
+        updateLoaderStep('generation', 'failed');
+        showNotification(`Custom implementation failed: ${result.error || 'Unknown error'}`, 'error');
+        
+        setTimeout(() => {
+          closeLoader();
+        }, 2000);
+      }
+    } catch (error) {
+      updateLoaderStep('generation', 'failed');
+      console.error('Custom implementation failed:', error);
+      showNotification(`Custom implementation failed: ${error.message}`, 'error');
+      
+      setTimeout(() => {
+        closeLoader();
+      }, 2000);
+    } finally {
+      setIsSubmittingCustomPrompt(false);
+    }
+  };
+
+  // Handle mentor feedback implementation
+  const handleMentorFeedbackImplementation = async (feedback: any) => {
+    if (!repoUrl) {
+      showNotification('Repository URL is required for implementation', 'error');
+      return;
+    }
+
+    const mentorImplementation = {
+      id: `mentor-${feedback._id}`,
+      title: `Mentor Feedback: ${feedback.mentor?.name || 'Anonymous'}`,
+      description: feedback.feedbackText,
+      difficulty: 'Intermediate',
+      estimatedTime: '2-3 hours',
+      priority: 'High',
+      category: 'Mentor Feedback'
+    };
+
+    // Initialize loader
+    initializeLoaderSteps(mentorImplementation.title);
+
+    // Step 1: Workspace initialization
+    updateLoaderStep('workspace', 'processing');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    updateLoaderStep('workspace', 'completed');
+
+    // Step 2: AI configuration
+    updateLoaderStep('config', 'processing');
+    await new Promise(resolve => setTimeout(resolve, 800));
+    updateLoaderStep('config', 'completed');
+
+    // Step 3: Code generation based on mentor feedback
+    updateLoaderStep('generation', 'processing');
+    
+    try {
+      const response = await fetch(`${apiBase}/api/implementation/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repoUrl,
+          projectName,
+          techStack,
+          implementation: mentorImplementation,
+          analysisData: aiAnalysis,
+          mentorFeedback: feedback
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        updateLoaderStep('generation', 'completed');
+        
+        // Step 4: Pull request creation
+        if (result.pullRequest?.success) {
+          updateLoaderStep('pr', 'processing');
+          await new Promise(resolve => setTimeout(resolve, 500));
+          updateLoaderStep('pr', 'completed');
+        } else {
+          updateLoaderStep('pr', 'failed');
+        }
+        
+        // Check for deployment (regardless of PR status)
+        if (result.deployment?.success) {
+          const deploymentMessage = result.deployment.cached 
+            ? `Mentor feedback implementation successful! Using existing deployment: ${result.deployment.deploymentUrl}`
+            : result.pullRequest?.success 
+              ? `Mentor feedback implementation successful! Pull request created and deployed: ${result.deployment.deploymentUrl}`
+              : `Mentor feedback implementation successful! Branch deployed: ${result.deployment.deploymentUrl}`;
+          showNotification(deploymentMessage, 'success');
+        } else if (result.pullRequest?.success) {
+          showNotification(`Mentor feedback implementation successful! Pull request created: ${result.pullRequest.url}`, 'success');
+        } else {
+          showNotification(`Mentor feedback implementation completed! Branch: ${result.codeGeneration.branchName}`, 'success');
+        }
+        
+        if (onImplementationStart) {
+          onImplementationStart([mentorImplementation.id]);
+        }
+        
+        // Refresh recent implementations
+        fetchRecentImplementations();
+        
+        // Close loader after a delay
+        setTimeout(() => {
+          closeLoader();
+        }, 2000);
+      } else {
+        updateLoaderStep('generation', 'failed');
+        showNotification(`Mentor feedback implementation failed: ${result.error || 'Unknown error'}`, 'error');
+        
+        setTimeout(() => {
+          closeLoader();
+        }, 2000);
+      }
+    } catch (error) {
+      updateLoaderStep('generation', 'failed');
+      console.error('Mentor feedback implementation failed:', error);
+      showNotification(`Mentor feedback implementation failed: ${error.message}`, 'error');
+      
+      setTimeout(() => {
+        closeLoader();
+      }, 2000);
     }
   };
 
@@ -663,15 +931,28 @@ const CodeImplementations: React.FC<CodeImplementationsProps> = ({
                       primaryTypographyProps={{ variant: 'body2', fontWeight: 600 }}
                       secondaryTypographyProps={{ variant: 'caption', sx: { opacity: 0.8 } }}
                     />
-                    {impl.pullRequest?.success && (
-                      <IconButton 
-                        size="small"
-                        onClick={() => window.open(impl.pullRequest.url, '_blank')}
-                        sx={{ color: 'white' }}
-                      >
-                        <OpenInNewIcon fontSize="small" />
-                      </IconButton>
-                    )}
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      {impl.pullRequest?.success && (
+                        <IconButton 
+                          size="small"
+                          onClick={() => window.open(impl.pullRequest.url, '_blank')}
+                          sx={{ color: 'white' }}
+                          title="View Pull Request"
+                        >
+                          <OpenInNewIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                      {impl.deployment?.success && (
+                        <IconButton 
+                          size="small"
+                          onClick={() => window.open(impl.deployment.url, '_blank')}
+                          sx={{ color: 'white' }}
+                          title="View Live Deployment"
+                        >
+                          <PublicIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                    </Box>
                   </ListItem>
                 </motion.div>
               ))}
@@ -681,6 +962,120 @@ const CodeImplementations: React.FC<CodeImplementationsProps> = ({
       </motion.div>
     );
   };
+
+  const renderMentorFeedback = () => {
+    if (mentorFeedback.length === 0) return null;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <Card sx={{ mb: 3, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <SchoolIcon sx={{ mr: 2, fontSize: 28 }} />
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                Mentor Feedback
+              </Typography>
+            </Box>
+            
+            <List dense>
+              {mentorFeedback.slice(0, 3).map((feedback, index) => (
+                <motion.div
+                  key={feedback._id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <ListItem sx={{ py: 1, px: 0 }}>
+                    <ListItemIcon sx={{ minWidth: 32 }}>
+                      <PersonIcon color="primary" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={feedback.mentor?.name || 'Anonymous Mentor'}
+                      secondary={`${feedback.feedbackText.substring(0, 100)}${feedback.feedbackText.length > 100 ? '...' : ''} • ${new Date(feedback.createdAt).toLocaleDateString()}`}
+                      primaryTypographyProps={{ variant: 'body2', fontWeight: 600 }}
+                      secondaryTypographyProps={{ variant: 'caption', sx: { opacity: 0.8 } }}
+                    />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {feedback.rating && (
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <StarIcon sx={{ fontSize: 16, color: 'gold' }} />
+                          <Typography variant="caption" sx={{ color: 'white' }}>
+                            {feedback.rating}/5
+                          </Typography>
+                        </Box>
+                      )}
+                      <IconButton 
+                        size="small"
+                        onClick={() => handleMentorFeedbackImplementation(feedback)}
+                        sx={{ color: 'white' }}
+                      >
+                        <PlayArrowIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </ListItem>
+                </motion.div>
+              ))}
+            </List>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
+
+  const renderCustomPromptDialog = () => (
+    <Dialog
+      open={showCustomPromptDialog}
+      onClose={() => setShowCustomPromptDialog(false)}
+      maxWidth="md"
+      fullWidth
+    >
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <AutoFixHighIcon color="primary" />
+        Custom Implementation Prompt
+      </DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Describe what you want to implement. Be specific about the functionality, files to modify, and any requirements.
+        </Typography>
+        <TextField
+          multiline
+          rows={6}
+          fullWidth
+          value={customPrompt}
+          onChange={(e) => setCustomPrompt(e.target.value)}
+          placeholder="Example: Add user authentication with JWT tokens, create login/logout endpoints, and protect routes with middleware..."
+          variant="outlined"
+          sx={{ mb: 2 }}
+        />
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <Typography variant="body2">
+            <strong>Tips for better results:</strong><br />
+            • Be specific about the technology stack and frameworks<br />
+            • Mention which files or components should be modified<br />
+            • Include any specific requirements or constraints<br />
+            • Consider the current project structure and patterns
+          </Typography>
+        </Alert>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setShowCustomPromptDialog(false)}>
+          Cancel
+        </Button>
+        <Button 
+          onClick={handleCustomPromptSubmit}
+          variant="contained"
+          disabled={!customPrompt.trim() || isSubmittingCustomPrompt}
+          startIcon={isSubmittingCustomPrompt ? <CircularProgress size={16} /> : <SendIcon />}
+        >
+          {isSubmittingCustomPrompt ? 'Generating...' : 'Generate Implementation'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
 
   return (
     <Box>
@@ -712,6 +1107,16 @@ const CodeImplementations: React.FC<CodeImplementationsProps> = ({
             <Tab 
               label="Recommendations" 
               icon={<CodeIcon />} 
+              iconPosition="start"
+            />
+            <Tab 
+              label="Mentor Feedback" 
+              icon={<SchoolIcon />} 
+              iconPosition="start"
+            />
+            <Tab 
+              label="Custom Prompt" 
+              icon={<EditIcon />} 
               iconPosition="start"
             />
             <Tab 
@@ -842,6 +1247,175 @@ const CodeImplementations: React.FC<CodeImplementationsProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
+            Mentor Feedback & Implementation
+          </Typography>
+          
+          {mentorFeedback.length > 0 ? (
+            <Box sx={{ display: 'grid', gap: 2 }}>
+              {mentorFeedback.map((feedback, index) => (
+                <Card key={feedback._id} variant="outlined">
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
+                          <PersonIcon fontSize="small" />
+                        </Avatar>
+                        <Box>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                            {feedback.mentor?.name || 'Anonymous Mentor'}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {feedback.mentor?.organization || 'Mentor'} • {new Date(feedback.createdAt).toLocaleDateString()}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      {feedback.rating && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <StarIcon sx={{ fontSize: 16, color: 'gold' }} />
+                          <Typography variant="body2">{feedback.rating}/5</Typography>
+                        </Box>
+                      )}
+                    </Box>
+                    
+                    <Typography variant="body1" sx={{ mb: 2, lineHeight: 1.6 }}>
+                      {feedback.feedbackText}
+                    </Typography>
+                    
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      <Button 
+                        variant="contained" 
+                        size="small" 
+                        startIcon={<PlayArrowIcon />}
+                        onClick={() => handleMentorFeedbackImplementation(feedback)}
+                      >
+                        Implement Feedback
+                      </Button>
+                      <Button 
+                        variant="outlined" 
+                        size="small" 
+                        startIcon={<RateReviewIcon />}
+                      >
+                        View Details
+                      </Button>
+                      {feedback.deployment?.success && (
+                        <Button 
+                          variant="outlined" 
+                          size="small" 
+                          startIcon={<PublicIcon />}
+                          onClick={() => window.open(feedback.deployment.url, '_blank')}
+                          color="success"
+                        >
+                          View Live
+                        </Button>
+                      )}
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          ) : (
+            <Card sx={{ p: 4, textAlign: 'center' }}>
+              <SchoolIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+                No Mentor Feedback Yet
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Mentors haven't provided feedback for this project yet. Check back later or invite mentors to review your project.
+              </Typography>
+            </Card>
+          )}
+        </motion.div>
+      )}
+
+      {activeTab === 2 && showHistory && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
+            Custom Implementation Prompt
+          </Typography>
+          
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <AutoFixHighIcon sx={{ mr: 2, color: 'primary.main', fontSize: 28 }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  Create Custom Implementation
+                </Typography>
+              </Box>
+              
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                Have a specific feature or improvement in mind? Use our custom prompt feature to describe exactly what you want to implement.
+              </Typography>
+              
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                <Button 
+                  variant="contained" 
+                  size="large" 
+                  startIcon={<EditIcon />}
+                  onClick={() => setShowCustomPromptDialog(true)}
+                >
+                  Create Custom Prompt
+                </Button>
+                <Button 
+                  variant="outlined" 
+                  size="large" 
+                  startIcon={<CodeIcon />}
+                >
+                  View Examples
+                </Button>
+              </Box>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent>
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+                Example Prompts
+              </Typography>
+              
+              <Box sx={{ display: 'grid', gap: 2 }}>
+                <Card variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                    Authentication System
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    "Add JWT-based authentication with login/logout endpoints, password hashing, and protected routes middleware"
+                  </Typography>
+                </Card>
+                
+                <Card variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                    API Documentation
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    "Generate comprehensive API documentation with Swagger/OpenAPI specs and interactive documentation"
+                  </Typography>
+                </Card>
+                
+                <Card variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                    Testing Framework
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    "Set up Jest testing framework with unit tests for all components and integration tests for API endpoints"
+                  </Typography>
+                </Card>
+              </Box>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {activeTab === 3 && showHistory && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
           <ImplementationHistory 
             projectName={projectName}
             repoUrl={repoUrl}
@@ -850,6 +1424,9 @@ const CodeImplementations: React.FC<CodeImplementationsProps> = ({
           />
         </motion.div>
       )}
+
+      {/* Custom Prompt Dialog */}
+      {renderCustomPromptDialog()}
 
       {/* Implementation Loader */}
       <ImplementationLoader
