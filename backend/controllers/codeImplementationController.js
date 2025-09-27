@@ -1,5 +1,6 @@
 import GeminiCodeService from '../services/geminiCodeService.js';
 import AICacheService from '../services/aiCacheService.js';
+import Implementation from '../models/Implementation.js';
 
 /**
  * Generate code implementation for a single recommendation
@@ -36,10 +37,39 @@ export const generateImplementation = async (req, res) => {
     console.log(`Repository: ${repoUrl}`);
     console.log(`Project: ${projectName}`);
 
+    // Create implementation record in MongoDB
+    const implementationRecord = new Implementation({
+      implementationId: implementation.id,
+      title: implementation.title,
+      description: implementation.description,
+      category: implementation.category || 'Quality',
+      difficulty: implementation.difficulty || 'Intermediate',
+      priority: implementation.priority || 'Medium',
+      estimatedTime: implementation.estimatedTime || '1-2 hours',
+      projectName,
+      repoUrl,
+      techStack,
+      status: 'processing',
+      progress: 0,
+      analysisData,
+      userId: req.user?.id,
+      sessionId: req.sessionID,
+      startedAt: new Date()
+    });
+
+    await implementationRecord.save();
+    await implementationRecord.addLog('info', 'Implementation started', { 
+      implementationId: implementation.id,
+      projectName,
+      repoUrl 
+    });
+
     const geminiService = new GeminiCodeService();
     
     // Initialize workspace
     const projectDir = await geminiService.initializeWorkspace(repoUrl, projectName);
+    await implementationRecord.updateStatus('processing', 20);
+    await implementationRecord.addLog('info', 'Workspace initialized', { projectDir });
     
     // Setup Gemini configuration
     const projectContext = {
@@ -50,9 +80,17 @@ export const generateImplementation = async (req, res) => {
       analysisData
     };
     await geminiService.setupGeminiConfig(projectDir, projectContext);
+    await implementationRecord.updateStatus('processing', 40);
+    await implementationRecord.addLog('info', 'Gemini configuration setup completed');
 
     // Generate implementation
     const result = await geminiService.generateImplementation(projectDir, implementation);
+    await implementationRecord.updateStatus('processing', 80);
+    await implementationRecord.addLog('info', 'Code generation completed', { 
+      success: result.success,
+      branchName: result.branchName,
+      modifiedFiles: result.modifiedFiles 
+    });
 
     // Create pull request if implementation was successful
     let pullRequestResult = null;
@@ -63,6 +101,10 @@ export const generateImplementation = async (req, res) => {
           result.branchName, 
           implementation
         );
+        await implementationRecord.addLog('success', 'Pull request created successfully', { 
+          url: pullRequestResult.url,
+          number: pullRequestResult.number 
+        });
       } catch (prError) {
         console.warn('Pull request creation failed:', prError.message);
         pullRequestResult = { 
@@ -70,10 +112,42 @@ export const generateImplementation = async (req, res) => {
           error: prError.message,
           branchName: result.branchName 
         };
+        await implementationRecord.addLog('warn', 'Pull request creation failed', { 
+          error: prError.message 
+        });
       }
     }
 
-    // Store implementation record in cache for tracking
+    // Update implementation record with final results
+    try {
+      await implementationRecord.updateCodeGeneration(result);
+      if (pullRequestResult) {
+        await implementationRecord.updatePullRequest(pullRequestResult);
+      }
+      
+      // Update final status
+      const finalStatus = result.success ? 'completed' : 'failed';
+      await implementationRecord.updateStatus(finalStatus, 100);
+      
+      if (result.success) {
+        await implementationRecord.addLog('success', 'Implementation completed successfully', {
+          branchName: result.branchName,
+          modifiedFiles: result.modifiedFiles,
+          pullRequestUrl: pullRequestResult?.url
+        });
+      } else {
+        await implementationRecord.addLog('error', 'Implementation failed', {
+          error: result.error
+        });
+      }
+    } catch (updateError) {
+      console.warn('Failed to update implementation record:', updateError.message);
+      await implementationRecord.addLog('error', 'Failed to update implementation record', {
+        error: updateError.message
+      });
+    }
+
+    // Store implementation record in cache for tracking (legacy)
     try {
       const cacheService = new AICacheService();
       const cacheResult = await cacheService.storeImplementationRecord({
@@ -98,7 +172,8 @@ export const generateImplementation = async (req, res) => {
       implementation: {
         id: implementation.id,
         title: implementation.title,
-        status: result.success ? 'completed' : 'failed'
+        status: result.success ? 'completed' : 'failed',
+        recordId: implementationRecord._id
       },
       codeGeneration: result,
       pullRequest: pullRequestResult,
@@ -107,12 +182,34 @@ export const generateImplementation = async (req, res) => {
         branchName: result.branchName,
         modifiedFiles: result.modifiedFiles,
         commitHash: result.commitHash,
-        generatedAt: new Date().toISOString()
+        generatedAt: new Date().toISOString(),
+        duration: implementationRecord.duration,
+        progress: implementationRecord.progress
       }
     });
 
   } catch (error) {
     console.error('Code implementation failed:', error);
+    
+    // Update implementation record with error if it exists
+    if (typeof implementationRecord !== 'undefined') {
+      try {
+        await implementationRecord.updateStatus('failed', 0);
+        await implementationRecord.addLog('error', 'Implementation failed with error', {
+          error: error.message,
+          stack: error.stack
+        });
+        implementationRecord.error = {
+          message: error.message,
+          stack: error.stack,
+          occurredAt: new Date()
+        };
+        await implementationRecord.save();
+      } catch (updateError) {
+        console.warn('Failed to update implementation record with error:', updateError.message);
+      }
+    }
+    
     return res.status(500).json({
       error: "Code implementation failed",
       details: error.message,
@@ -159,6 +256,36 @@ export const batchImplementation = async (req, res) => {
     console.log(`Repository: ${repoUrl}`);
     console.log(`Project: ${projectName}`);
 
+    // Generate batch ID for tracking
+    const batchId = `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Create implementation records for each item in the batch
+    const implementationRecords = [];
+    for (let i = 0; i < implementations.length; i++) {
+      const impl = implementations[i];
+      const record = new Implementation({
+        implementationId: impl.id,
+        title: impl.title,
+        description: impl.description,
+        category: impl.category || 'Quality',
+        difficulty: impl.difficulty || 'Intermediate',
+        priority: impl.priority || 'Medium',
+        estimatedTime: impl.estimatedTime || '1-2 hours',
+        projectName,
+        repoUrl,
+        techStack,
+        status: 'pending',
+        progress: 0,
+        analysisData,
+        userId: req.user?.id,
+        sessionId: req.sessionID,
+        batchId,
+        batchOrder: i + 1
+      });
+      await record.save();
+      implementationRecords.push(record);
+    }
+
     const geminiService = new GeminiCodeService();
     
     // Initialize workspace
@@ -176,6 +303,38 @@ export const batchImplementation = async (req, res) => {
 
     // Process implementations
     const results = await geminiService.batchImplementation(projectDir, implementations);
+
+    // Update implementation records with results
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      const record = implementationRecords[i];
+      
+      if (record) {
+        try {
+          await record.updateCodeGeneration(result);
+          if (result.pullRequest) {
+            await record.updatePullRequest(result.pullRequest);
+          }
+          
+          const finalStatus = result.success ? 'completed' : 'failed';
+          await record.updateStatus(finalStatus, 100);
+          
+          if (result.success) {
+            await record.addLog('success', 'Batch implementation completed successfully', {
+              branchName: result.branchName,
+              modifiedFiles: result.modifiedFiles,
+              pullRequestUrl: result.pullRequest?.url
+            });
+          } else {
+            await record.addLog('error', 'Batch implementation failed', {
+              error: result.error
+            });
+          }
+        } catch (updateError) {
+          console.warn(`Failed to update implementation record ${record._id}:`, updateError.message);
+        }
+      }
+    }
 
     // Calculate success metrics
     const successCount = results.filter(r => r.success).length;
@@ -205,18 +364,21 @@ export const batchImplementation = async (req, res) => {
         failed: failureCount,
         successRate: Math.round((successCount / implementations.length) * 100)
       },
-      results: results.map(result => ({
+      results: results.map((result, index) => ({
         implementation: result.implementation,
         success: result.success,
         branchName: result.branchName,
         modifiedFiles: result.modifiedFiles,
         pullRequest: result.pullRequest,
-        error: result.error
+        error: result.error,
+        recordId: implementationRecords[index]?._id
       })),
       metadata: {
         projectName,
+        batchId,
         processedAt: new Date().toISOString(),
-        workspace: projectDir
+        workspace: projectDir,
+        recordIds: implementationRecords.map(r => r._id)
       }
     });
 
@@ -244,17 +406,52 @@ export const getImplementationStatus = async (req, res) => {
       });
     }
 
+    // Get implementation history from MongoDB
+    let query = { repoUrl };
+    if (implementationId) {
+      query.implementationId = implementationId;
+    }
+
+    const implementations = await Implementation.find(query)
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    // Also get from cache service for backward compatibility
     const cacheService = new AICacheService();
-    
-    // Get implementation history
-    const history = await cacheService.getImplementationHistory(repoUrl, implementationId);
+    const cacheHistory = await cacheService.getImplementationHistory(repoUrl, implementationId);
     
     return res.json({
       success: true,
-      history,
+      implementations: implementations.map(impl => ({
+        id: impl._id,
+        implementationId: impl.implementationId,
+        title: impl.title,
+        description: impl.description,
+        category: impl.category,
+        difficulty: impl.difficulty,
+        priority: impl.priority,
+        status: impl.status,
+        progress: impl.progress,
+        projectName: impl.projectName,
+        repoUrl: impl.repoUrl,
+        techStack: impl.techStack,
+        codeGeneration: impl.codeGeneration,
+        pullRequest: impl.pullRequest,
+        startedAt: impl.startedAt,
+        completedAt: impl.completedAt,
+        duration: impl.duration,
+        durationFormatted: impl.durationFormatted,
+        logs: impl.logs,
+        metrics: impl.metrics,
+        error: impl.error,
+        createdAt: impl.createdAt,
+        updatedAt: impl.updatedAt
+      })),
+      cacheHistory, // Legacy support
       metadata: {
         repoUrl,
         implementationId,
+        total: implementations.length,
         retrievedAt: new Date().toISOString()
       }
     });
@@ -263,6 +460,230 @@ export const getImplementationStatus = async (req, res) => {
     console.error('Failed to get implementation status:', error);
     return res.status(500).json({
       error: "Failed to retrieve implementation status",
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+};
+
+/**
+ * Get implementation history by project
+ */
+export const getImplementationHistory = async (req, res) => {
+  try {
+    const { projectName, repoUrl, status, limit = 20, offset = 0 } = req.query;
+
+    if (!projectName && !repoUrl) {
+      return res.status(400).json({
+        error: "Project name or repository URL is required",
+        details: "Please provide projectName or repoUrl in query parameters"
+      });
+    }
+
+    let query = {};
+    if (projectName) query.projectName = projectName;
+    if (repoUrl) query.repoUrl = repoUrl;
+    if (status) query.status = status;
+
+    const implementations = await Implementation.find(query)
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip(parseInt(offset));
+
+    const total = await Implementation.countDocuments(query);
+
+    return res.json({
+      success: true,
+      implementations: implementations.map(impl => ({
+        id: impl._id,
+        implementationId: impl.implementationId,
+        title: impl.title,
+        description: impl.description,
+        category: impl.category,
+        difficulty: impl.difficulty,
+        priority: impl.priority,
+        status: impl.status,
+        progress: impl.progress,
+        projectName: impl.projectName,
+        repoUrl: impl.repoUrl,
+        techStack: impl.techStack,
+        codeGeneration: impl.codeGeneration,
+        pullRequest: impl.pullRequest,
+        startedAt: impl.startedAt,
+        completedAt: impl.completedAt,
+        duration: impl.duration,
+        durationFormatted: impl.durationFormatted,
+        logs: impl.logs.slice(-5), // Last 5 logs
+        metrics: impl.metrics,
+        error: impl.error,
+        createdAt: impl.createdAt,
+        updatedAt: impl.updatedAt
+      })),
+      pagination: {
+        total,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        hasMore: total > parseInt(offset) + parseInt(limit)
+      },
+      metadata: {
+        projectName,
+        repoUrl,
+        status,
+        retrievedAt: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('Failed to get implementation history:', error);
+    return res.status(500).json({
+      error: "Failed to retrieve implementation history",
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+};
+
+/**
+ * Get implementation statistics
+ */
+export const getImplementationStatistics = async (req, res) => {
+  try {
+    const { projectName, repoUrl, userId, timeRange = '30d' } = req.query;
+
+    let filters = {};
+    if (projectName) filters.projectName = projectName;
+    if (repoUrl) filters.repoUrl = repoUrl;
+    if (userId) filters.userId = userId;
+
+    // Add time range filter
+    const now = new Date();
+    let startDate;
+    switch (timeRange) {
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+    filters.createdAt = { $gte: startDate };
+
+    const [statistics, categoryStats] = await Promise.all([
+      Implementation.getStatistics(filters),
+      Implementation.getCategoryStatistics(filters)
+    ]);
+
+    const stats = statistics[0] || {
+      total: 0,
+      completed: 0,
+      failed: 0,
+      processing: 0,
+      pending: 0,
+      averageDuration: 0,
+      totalFilesProcessed: 0,
+      totalLinesAdded: 0,
+      totalLinesRemoved: 0
+    };
+
+    return res.json({
+      success: true,
+      statistics: {
+        ...stats,
+        successRate: stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0,
+        failureRate: stats.total > 0 ? Math.round((stats.failed / stats.total) * 100) : 0
+      },
+      categoryStatistics: categoryStats,
+      metadata: {
+        projectName,
+        repoUrl,
+        userId,
+        timeRange,
+        generatedAt: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('Failed to get implementation statistics:', error);
+    return res.status(500).json({
+      error: "Failed to retrieve implementation statistics",
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+};
+
+/**
+ * Get batch implementation details
+ */
+export const getBatchImplementation = async (req, res) => {
+  try {
+    const { batchId } = req.params;
+
+    if (!batchId) {
+      return res.status(400).json({
+        error: "Batch ID is required",
+        details: "Please provide batchId in URL parameters"
+      });
+    }
+
+    const implementations = await Implementation.findByBatch(batchId);
+
+    if (implementations.length === 0) {
+      return res.status(404).json({
+        error: "Batch not found",
+        details: `No implementations found for batch ID: ${batchId}`
+      });
+    }
+
+    const successCount = implementations.filter(impl => impl.status === 'completed').length;
+    const failureCount = implementations.filter(impl => impl.status === 'failed').length;
+
+    return res.json({
+      success: true,
+      batch: {
+        batchId,
+        total: implementations.length,
+        successful: successCount,
+        failed: failureCount,
+        successRate: Math.round((successCount / implementations.length) * 100),
+        startedAt: implementations[0]?.createdAt,
+        completedAt: implementations[implementations.length - 1]?.completedAt
+      },
+      implementations: implementations.map(impl => ({
+        id: impl._id,
+        implementationId: impl.implementationId,
+        title: impl.title,
+        description: impl.description,
+        category: impl.category,
+        difficulty: impl.difficulty,
+        priority: impl.priority,
+        status: impl.status,
+        progress: impl.progress,
+        batchOrder: impl.batchOrder,
+        codeGeneration: impl.codeGeneration,
+        pullRequest: impl.pullRequest,
+        startedAt: impl.startedAt,
+        completedAt: impl.completedAt,
+        duration: impl.duration,
+        durationFormatted: impl.durationFormatted,
+        error: impl.error,
+        createdAt: impl.createdAt
+      })),
+      metadata: {
+        batchId,
+        retrievedAt: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('Failed to get batch implementation:', error);
+    return res.status(500).json({
+      error: "Failed to retrieve batch implementation",
       details: error.message,
       timestamp: new Date().toISOString()
     });
@@ -513,5 +934,8 @@ export default {
   generateImplementation,
   batchImplementation,
   getImplementationStatus,
+  getImplementationHistory,
+  getImplementationStatistics,
+  getBatchImplementation,
   generateImplementationPlan
 };

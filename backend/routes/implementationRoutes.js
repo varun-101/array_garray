@@ -2,7 +2,10 @@ import express from 'express';
 import { 
   generateImplementation, 
   batchImplementation, 
-  getImplementationStatus, 
+  getImplementationStatus,
+  getImplementationHistory,
+  getImplementationStatistics,
+  getBatchImplementation,
   generateImplementationPlan 
 } from '../controllers/codeImplementationController.js';
 
@@ -49,6 +52,37 @@ router.post('/batch', batchImplementation);
  * @access Public
  */
 router.get('/status', getImplementationStatus);
+
+/**
+ * @route GET /api/implementation/history
+ * @desc Get implementation history with pagination and filtering
+ * @query projectName - Project name (optional)
+ * @query repoUrl - Repository URL (optional)
+ * @query status - Implementation status filter (optional)
+ * @query limit - Number of results per page (default: 20)
+ * @query offset - Number of results to skip (default: 0)
+ * @access Public
+ */
+router.get('/history', getImplementationHistory);
+
+/**
+ * @route GET /api/implementation/statistics
+ * @desc Get implementation statistics and analytics
+ * @query projectName - Project name (optional)
+ * @query repoUrl - Repository URL (optional)
+ * @query userId - User ID (optional)
+ * @query timeRange - Time range filter: '7d', '30d', '90d' (default: '30d')
+ * @access Public
+ */
+router.get('/statistics', getImplementationStatistics);
+
+/**
+ * @route GET /api/implementation/batch/:batchId
+ * @desc Get batch implementation details
+ * @param batchId - Batch ID (required)
+ * @access Public
+ */
+router.get('/batch/:batchId', getBatchImplementation);
 
 /**
  * @route POST /api/implementation/plan
