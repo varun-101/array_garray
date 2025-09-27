@@ -124,6 +124,8 @@ const ProjectDetails: React.FC = () => {
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackRating, setFeedbackRating] = useState<number | null>(null);
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [roadmapLoaded, setRoadmapLoaded] = useState(false);
+  const [roadmapLoading, setRoadmapLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -242,6 +244,45 @@ const ProjectDetails: React.FC = () => {
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
+    
+    // Load roadmap data when Roadmap tab is clicked for the first time
+    if (newValue === 2 && !roadmapLoaded && project) {
+      loadRoadmapData();
+    }
+  };
+
+  const loadRoadmapData = async () => {
+    if (!project || roadmapLoaded || roadmapLoading) return;
+    
+    setRoadmapLoading(true);
+    try {
+      const aiResponse = await fetch(`${apiBase}/ai/generate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          projectDescription: project.projectDescription,
+        }),
+      });
+
+      if (!aiResponse.ok) {
+        throw new Error('Failed to generate roadmap');
+      }
+
+      const parsedAiResponse = await aiResponse.json();
+      setMermaidCode(parsedAiResponse.message);
+      setRoadmapLoaded(true);
+    } catch (error) {
+      console.error('Error loading roadmap data:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to load roadmap data',
+        severity: 'error'
+      });
+    } finally {
+      setRoadmapLoading(false);
+    }
   };
 
   // Handler functions for the CodeImplementations component
@@ -795,9 +836,32 @@ const ProjectDetails: React.FC = () => {
             <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
               Road Map
             </Typography>
-            <Card sx={{ mb: 3 }}>
-              <MermaidChart code={mermaidCode} />
-            </Card>
+            {roadmapLoading ? (
+              <Card sx={{ mb: 3, p: 4, textAlign: 'center' }}>
+                <CircularProgress sx={{ mb: 2 }} />
+                <Typography variant="body1" color="text.secondary">
+                  Generating roadmap...
+                </Typography>
+              </Card>
+            ) : roadmapLoaded && mermaidCode ? (
+              <Card sx={{ mb: 3 }}>
+                <MermaidChart code={mermaidCode} />
+              </Card>
+            ) : (
+              <Card sx={{ mb: 3, p: 4, textAlign: 'center' }}>
+                <Typography variant="body1" color="text.secondary">
+                  Click to load roadmap
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={loadRoadmapData}
+                  disabled={roadmapLoading}
+                  sx={{ mt: 2 }}
+                >
+                  Generate Roadmap
+                </Button>
+              </Card>
+            )}
           </Box>
         </TabPanel>
 
@@ -820,6 +884,7 @@ const ProjectDetails: React.FC = () => {
             aiAnalysis={aiAnalysis}
             projectName={project.projectName}
             techStack={project.techStack || []}
+            repoUrl={project.projectLink}
             onImplementationStart={handleImplementationStart}
             onGeneratePlan={handleGeneratePlan}
             onViewExamples={handleViewExamples}

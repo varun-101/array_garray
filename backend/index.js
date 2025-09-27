@@ -9,6 +9,7 @@ import prRoutes from "./routes/prRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
 import aiResponseService from "./services/aiService.js";
 import aiRoutes from "./routes/aiRoutes.js";
+import implementationRoutes from "./routes/implementationRoutes.js";
 // import aiRoutes from "./routes/aiRoutes.js";
 import mentorRoutes from "./routes/mentorRoutes.js";
 import vercelRoutes from "./routes/vercelRoutes.js"
@@ -27,9 +28,12 @@ app.use("/github", repoRoutes);
 app.use("/github", issueRoutes);
 app.use("/github", prRoutes);
 app.use("/api/projects", projectRoutes);
-app.use("/ai", aiRoutes);app.use("/api/ai", aiRoutes);
+app.use("/ai", aiRoutes);
+app.use("/api/ai", aiRoutes);
+app.use("/api/implementation", implementationRoutes);
 app.use("/api/mentors", mentorRoutes);
 app.use("/vercel", vercelRoutes)
+
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);

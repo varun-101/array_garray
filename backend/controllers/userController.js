@@ -23,6 +23,11 @@ export const getUserProfile = async (req, res) => {
         email: user.email,
         avatar: user.avatar,
         githubUrl: user.githubUrl,
+        bio: user.bio,
+        skills: user.skills,
+        interests: user.interests,
+        joined: user.joined,
+        title: user.title,
         lastLoginAt: user.lastLoginAt,
         stats: user.stats,
         preferences: user.preferences,
@@ -34,6 +39,55 @@ export const getUserProfile = async (req, res) => {
     console.error("Error fetching user profile:", error);
     res.status(500).json({ 
       error: "Failed to fetch user profile",
+      details: error.message 
+    });
+  }
+};
+
+// Update user profile
+export const updateUserProfile = async (req, res) => {
+  try {
+    const { githubId } = req.params;
+    const profileData = req.body;
+    
+    const user = await DatabaseService.findUserByGitHubId(parseInt(githubId));
+    
+    if (!user) {
+      return res.status(404).json({ 
+        error: "User not found" 
+      });
+    }
+
+    // Update profile using the model method
+    await user.updateProfile(profileData);
+    
+    res.json({
+      success: true,
+      data: {
+        id: user._id,
+        githubId: user.githubId,
+        username: user.username,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        githubUrl: user.githubUrl,
+        bio: user.bio,
+        skills: user.skills,
+        interests: user.interests,
+        joined: user.joined,
+        title: user.title,
+        lastLoginAt: user.lastLoginAt,
+        stats: user.stats,
+        preferences: user.preferences,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      },
+      message: "Profile updated successfully"
+    });
+  } catch (error) {
+    console.error("Error updating user profile:", error);
+    res.status(500).json({ 
+      error: "Failed to update user profile",
       details: error.message 
     });
   }
