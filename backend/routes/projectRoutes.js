@@ -8,7 +8,8 @@ import {
   adoptProject,
   respondToInvitation,
   getCollaborationStatus,
-  syncGitHubCollaborationStatus
+  syncGitHubCollaborationStatus,
+  getProjectCommits
 } from "../controllers/projectController.js";
 
 const router = Router();
@@ -22,4 +23,5 @@ router.post("/:id/adopt", adoptProject);
 router.patch("/:id/collaboration", respondToInvitation);
 router.get("/:id/collaboration-status", getCollaborationStatus);
 router.get("/:id/sync-github-status", syncGitHubCollaborationStatus);
+router.post("/:id/commits", getProjectCommits);
 export default router;

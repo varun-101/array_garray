@@ -131,7 +131,7 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const ProjectDetails: React.FC = () => {
-  const { user, userType, mentor } = useAuth();
+  const { user, userType, mentor, accessToken } = useAuth();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [tabValue, setTabValue] = useState(0);
@@ -170,6 +170,10 @@ const ProjectDetails: React.FC = () => {
     } | null;
   } | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [commits, setCommits] = useState<any[]>([]);
+  const [commitsLoading, setCommitsLoading] = useState(false);
+  const [commitsError, setCommitsError] = useState<string | null>(null);
+  const [isAdopting, setIsAdopting] = useState(false);
 
   const apiBase =
     (import.meta as any).env?.VITE_API_BASE_URL || "http://localhost:3000";
@@ -255,6 +259,86 @@ const ProjectDetails: React.FC = () => {
       setIsRefreshing(false);
     }
   };
+
+  const fetchCommits = async () => {
+    if (!accessToken || !id) return;
+    
+    setCommitsLoading(true);
+    setCommitsError(null);
+    
+    try {
+      const response = await fetch(`${apiBase}/api/projects/${id}/commits?per_page=5`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          accessToken: accessToken
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch commits');
+      }
+
+      const data = await response.json();
+      setCommits(data.data || []);
+    } catch (error) {
+      console.error('Error fetching commits:', error);
+      setCommitsError(error instanceof Error ? error.message : 'Failed to fetch commits');
+    } finally {
+      setCommitsLoading(false);
+    }
+  };
+
+  const handleAdoptProject = async () => {
+    if (!user?.id || !id) return;
+
+    setIsAdopting(true);
+    try {
+      const response = await fetch(`${apiBase}/api/projects/${id}/adopt`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: user.id }),
+      });
+
+      if (response.ok) {
+        // Update collaboration status
+        setCollaborationStatus({
+          isOwner: false,
+          collaboration: {
+            status: 'pending',
+            invitedAt: new Date().toISOString(),
+          }
+        });
+        
+        setSnackbar({
+          open: true,
+          message: 'Project adoption request sent successfully!',
+          severity: 'success'
+        });
+      } else {
+        const errorData = await response.json();
+        setSnackbar({
+          open: true,
+          message: errorData.error || 'Failed to adopt project',
+          severity: 'error'
+        });
+      }
+    } catch (error) {
+      console.error('Error adopting project:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to adopt project',
+        severity: 'error'
+      });
+    } finally {
+      setIsAdopting(false);
+    }
+  };
   const [mermaidCode, setMermaidCode] = useState("");
   // const apiBase =
   //   (import.meta as any).env?.VITE_API_BASE_URL || "http://localhost:3000";
@@ -313,6 +397,13 @@ const ProjectDetails: React.FC = () => {
   useEffect(() => {
     fetchCollaborationStatus();
   }, [id, user?.id, apiBase]);
+
+  // Fetch commits when component mounts and user has access token
+  useEffect(() => {
+    if (accessToken && id) {
+      fetchCommits();
+    }
+  }, [id, accessToken, apiBase]);
 
 
   useEffect(() => {
@@ -381,6 +472,11 @@ const ProjectDetails: React.FC = () => {
     // Load roadmap data when Roadmap tab is clicked for the first time
     if (newValue === 2 && !roadmapLoaded && project) {
       loadRoadmapData();
+    }
+    
+    // Fetch commits when Recent Commits tab is clicked
+    if (newValue === 1 && accessToken && id) {
+      fetchCommits();
     }
   };
 
@@ -870,10 +966,10 @@ const ProjectDetails: React.FC = () => {
                       <>
                         <CheckCircleIcon sx={{ fontSize: '2rem', color: 'info.main' }} />
                         <Box sx={{ flexGrow: 1 }}>
-                          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#1a1a1a' }}>
                             Project Owner
                           </Typography>
-                          <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                          <Typography variant="body2" sx={{ color: '#4a4a4a' }}>
                             You are the owner of this project. You can manage collaborators and project settings.
                           </Typography>
                         </Box>
@@ -882,10 +978,10 @@ const ProjectDetails: React.FC = () => {
                       <>
                         <CheckCircleIcon sx={{ fontSize: '2rem', color: 'success.main' }} />
                         <Box sx={{ flexGrow: 1 }}>
-                          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#1a1a1a' }}>
                             Active Collaborator
                           </Typography>
-                          <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                          <Typography variant="body2" sx={{ color: '#4a4a4a' }}>
                             You are an active collaborator on this project. You can contribute to the codebase and participate in discussions.
                           </Typography>
                         </Box>
@@ -894,13 +990,13 @@ const ProjectDetails: React.FC = () => {
                       <>
                         <HourglassEmptyIcon sx={{ fontSize: '2rem', color: 'warning.main' }} />
                         <Box sx={{ flexGrow: 1 }}>
-                          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#1a1a1a' }}>
                             Invitation Pending
                           </Typography>
-                          <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                          <Typography variant="body2" sx={{ color: '#4a4a4a' }}>
                             Your collaboration request is pending approval from the project owner. Check back later or contact the owner directly.
                           </Typography>
-                          <Typography variant="caption" sx={{ opacity: 0.8, mt: 1, display: 'block' }}>
+                          <Typography variant="caption" sx={{ color: '#6a6a6a', mt: 1, display: 'block' }}>
                             Requested on: {new Date(collaborationStatus.collaboration.invitedAt).toLocaleDateString()}
                           </Typography>
                         </Box>
@@ -909,10 +1005,10 @@ const ProjectDetails: React.FC = () => {
                       <>
                         <CancelIcon sx={{ fontSize: '2rem', color: 'error.main' }} />
                         <Box sx={{ flexGrow: 1 }}>
-                          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#1a1a1a' }}>
                             Invitation Declined
                           </Typography>
-                          <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                          <Typography variant="body2" sx={{ color: '#4a4a4a' }}>
                             Your collaboration request was declined. You can try requesting again or contact the project owner for more information.
                           </Typography>
                         </Box>
@@ -920,25 +1016,122 @@ const ProjectDetails: React.FC = () => {
                     ) : (
                       <>
                         <Box sx={{ 
-                          width: '2rem', 
-                          height: '2rem', 
+                          width: '3rem', 
+                          height: '3rem', 
                           borderRadius: '50%', 
-                          bgcolor: 'grey.400',
+                          bgcolor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
+                          boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)',
+                          position: 'relative',
+                          '&::before': {
+                            content: '""',
+                            position: 'absolute',
+                            top: '-2px',
+                            left: '-2px',
+                            right: '-2px',
+                            bottom: '-2px',
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            zIndex: -1,
+                            opacity: 0.3,
+                            filter: 'blur(4px)'
+                          }
                         }}>
-                          <Typography variant="caption" sx={{ color: 'white', fontWeight: 600 }}>
-                            ?
-                          </Typography>
+                          <Box
+                            sx={{
+                              width: '1.5rem',
+                              height: '1.5rem',
+                              borderRadius: '50%',
+                              bgcolor: 'white',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                            }}
+                          >
+                            <Typography variant="caption" sx={{ 
+                              color: '#667eea', 
+                              fontWeight: 700,
+                              fontSize: '0.9rem'
+                            }}>
+                              +
+                            </Typography>
+                          </Box>
                         </Box>
                         <Box sx={{ flexGrow: 1 }}>
-                          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#1a1a1a' }}>
                             Not a Collaborator
                           </Typography>
-                          <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                            You are not currently a collaborator on this project. Use the "Adopt Project" button to request collaboration.
+                          <Typography variant="body2" sx={{ color: '#4a4a4a', mb: 2, lineHeight: 1.6 }}>
+                            You are not currently a collaborator on this project. Join the development team to contribute to this amazing project!
                           </Typography>
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                            <Chip
+                              label="Request Access"
+                              size="small"
+                              sx={{
+                                bgcolor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                color: 'white',
+                                fontWeight: 600,
+                                '&:hover': {
+                                  bgcolor: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                                }
+                              }}
+                            />
+                            <Chip
+                              label="View Repository"
+                              variant="outlined"
+                              size="small"
+                              sx={{
+                                borderColor: '#667eea',
+                                color: '#667eea',
+                                fontWeight: 600,
+                                '&:hover': {
+                                  bgcolor: 'rgba(102, 126, 234, 0.1)',
+                                }
+                              }}
+                            />
+                          </Box>
+                        </Box>
+                        <Box sx={{ ml: 2 }}>
+                          <Button
+                            variant="contained"
+                            size="medium"
+                            onClick={handleAdoptProject}
+                            disabled={isAdopting}
+                            sx={{
+                              bgcolor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                              color: 'white',
+                              fontWeight: 600,
+                              px: 3,
+                              py: 1.5,
+                              borderRadius: 2,
+                              boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)',
+                              '&:hover': {
+                                bgcolor: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                                boxShadow: '0 6px 20px rgba(102, 126, 234, 0.4)',
+                                transform: 'translateY(-2px)',
+                              },
+                              '&:disabled': {
+                                bgcolor: 'grey.400',
+                                color: 'grey.600',
+                                boxShadow: 'none',
+                                transform: 'none',
+                              },
+                              transition: 'all 0.3s ease',
+                            }}
+                          >
+                            {isAdopting ? (
+                              <>
+                                <CircularProgress size={16} sx={{ mr: 1 }} />
+                                Adopting...
+                              </>
+                            ) : (
+                              'Adopt Project'
+                            )}
+                          </Button>
                         </Box>
                       </>
                     )}
@@ -946,27 +1139,92 @@ const ProjectDetails: React.FC = () => {
                   
                   {/* GitHub Status Indicator */}
                   {collaborationStatus.githubStatus && !collaborationStatus.isOwner && (
-                    <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(0, 0, 0, 0.1)', borderRadius: 1 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                        GitHub Repository Status:
+                    <Box sx={{ 
+                      mt: 3, 
+                      p: 3, 
+                      bgcolor: 'rgba(102, 126, 234, 0.05)', 
+                      borderRadius: 2,
+                      border: '1px solid rgba(102, 126, 234, 0.1)',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: '3px',
+                        background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
+                      }
+                    }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, color: '#1a1a1a' }}>
+                        GitHub Repository Status
                       </Typography>
                       {collaborationStatus.githubStatus.error ? (
-                        <Typography variant="body2" color="error">
-                          Error checking GitHub status: {collaborationStatus.githubStatus.error}
-                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Box sx={{
+                            width: '2rem',
+                            height: '2rem',
+                            borderRadius: '50%',
+                            bgcolor: 'error.light',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <CancelIcon sx={{ color: 'error.main', fontSize: 18 }} />
+                          </Box>
+                          <Box>
+                            <Typography variant="body2" color="error" sx={{ fontWeight: 600 }}>
+                              Error checking GitHub status
+                            </Typography>
+                            <Typography variant="caption" color="error" sx={{ opacity: 0.8 }}>
+                              {collaborationStatus.githubStatus.error}
+                            </Typography>
+                          </Box>
+                        </Box>
                       ) : collaborationStatus.githubStatus.isCollaborator ? (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <CheckCircleIcon sx={{ color: 'success.main', fontSize: 16 }} />
-                          <Typography variant="body2" color="success.main">
-                            You are a collaborator on the GitHub repository
-                          </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Box sx={{
+                            width: '2rem',
+                            height: '2rem',
+                            borderRadius: '50%',
+                            bgcolor: 'success.light',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <CheckCircleIcon sx={{ color: 'success.main', fontSize: 18 }} />
+                          </Box>
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 600, color: '#1a1a1a' }}>
+                              GitHub Collaborator
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: '#4a4a4a' }}>
+                              You have access to the repository
+                            </Typography>
+                          </Box>
                         </Box>
                       ) : (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <CancelIcon sx={{ color: 'warning.main', fontSize: 16 }} />
-                          <Typography variant="body2" color="warning.main">
-                            You are not a collaborator on the GitHub repository
-                          </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Box sx={{
+                            width: '2rem',
+                            height: '2rem',
+                            borderRadius: '50%',
+                            bgcolor: 'warning.light',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <CancelIcon sx={{ color: 'warning.main', fontSize: 18 }} />
+                          </Box>
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 600, color: '#1a1a1a' }}>
+                              No GitHub Access
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: '#4a4a4a' }}>
+                              Request collaboration to get repository access
+                            </Typography>
+                          </Box>
                         </Box>
                       )}
                     </Box>
@@ -1316,143 +1574,169 @@ const ProjectDetails: React.FC = () => {
         {/* Recent Commits Tab */}
         <TabPanel value={tabValue} index={1}>
           <Box sx={{ mb: 4 }}>
-            <Typography variant="h5" sx={{ fontWeight: 600, mb: 3 }}>
-              Recent Commits
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                Recent Commits
+              </Typography>
+              <Button
+                variant="outlined"
+                startIcon={commitsLoading ? <CircularProgress size={20} /> : <RefreshIcon />}
+                onClick={fetchCommits}
+                disabled={commitsLoading || !accessToken}
+                size="small"
+              >
+                {commitsLoading ? 'Loading...' : 'Refresh'}
+              </Button>
+            </Box>
+            
             <Card>
               <CardContent sx={{ p: 4 }}>
-                {/* Timeline Container */}
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    position: 'relative',
-                    width: '100%',
-                    py: 3,
-                    overflow: 'hidden',
-                  }}
-                >
-                  {/* Connecting Line */}
+                {commitsLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+                    <CircularProgress sx={{ mr: 2 }} />
+                    <Typography variant="body1" color="text.secondary">
+                      Loading recent commits...
+                    </Typography>
+                  </Box>
+                ) : commitsError ? (
+                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <Alert severity="error" sx={{ mb: 2 }}>
+                      {commitsError}
+                    </Alert>
+                    <Button
+                      variant="outlined"
+                      onClick={fetchCommits}
+                      disabled={!accessToken}
+                    >
+                      Try Again
+                    </Button>
+                  </Box>
+                ) : commits.length === 0 ? (
+                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <Typography variant="body1" color="text.secondary">
+                      No commits found or unable to access repository
+                    </Typography>
+                  </Box>
+                ) : (
                   <Box
                     sx={{
-                      position: 'absolute',
-                      top: '50%',
-                      left: '10%',
-                      right: '10%',
-                      height: '4px',
-                      background: 'linear-gradient(90deg, hsl(220, 85%, 60%), hsl(260, 75%, 70%), hsl(200, 100%, 65%))',
-                      borderRadius: '2px',
-                      zIndex: 1,
-                      '&::before': {
-                        content: '""',
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
-                        animation: 'flow 3s ease-in-out infinite',
-                      },
-                      '@keyframes flow': {
-                        '0%': { transform: 'translateX(-100%)' },
-                        '50%': { transform: 'translateX(100%)' },
-                        '100%': { transform: 'translateX(-100%)' },
-                      },
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      position: 'relative',
+                      width: '100%',
+                      py: 3,
+                      overflow: 'hidden',
                     }}
-                  />
-
-                  {/* Timeline Items */}
-                  {[
-                    {
-                      name: 'Vedant',
-                      image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=150&h=150&fit=crop&crop=center',
-                      description: 'Initial project setup and planning',
-                      date: '21st Oct, 2023',
-                    },
-                    {
-                      name: 'Piyush',
-                      image: 'https://images.unsplash.com/photo-1558655146-d09347e92766?w=150&h=150&fit=crop&crop=center',
-                      description: 'UI/UX design and wireframing',
-                      date: '22nd Oct, 2023',
-                    },
-                    {
-                      name: 'Varun',
-                      image: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=150&h=150&fit=crop&crop=center',
-                      description: 'Core development and implementation',
-                      date: '31st Oct, 2023',
-                    },
-                    {
-                      name: 'Abhisek',
-                      image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=150&h=150&fit=crop&crop=center',
-                      description: 'Quality assurance and bug fixes',
-                      date: '5th Nov, 2023',
-                    },
-                    {
-                      name: 'Ankit',
-                      image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=150&h=150&fit=crop&crop=center',
-                      description: 'Production deployment and launch',
-                      date: '12th Nov, 2023',
-                    },
-                  ].map((item, index) => (
+                  >
+                    {/* Connecting Line */}
                     <Box
-                      key={index}
                       sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        position: 'relative',
-                        zIndex: 2,
-                        flex: 1,
-                        maxWidth: '180px',
-                        transition: 'transform 0.3s ease',
-                        '&:hover': {
-                          transform: 'translateY(-8px)',
+                        position: 'absolute',
+                        top: '50%',
+                        left: '10%',
+                        right: '10%',
+                        height: '4px',
+                        background: 'linear-gradient(90deg, hsl(220, 85%, 60%), hsl(260, 75%, 70%), hsl(200, 100%, 65%))',
+                        borderRadius: '2px',
+                        zIndex: 1,
+                        '&::before': {
+                          content: '""',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
+                          animation: 'flow 3s ease-in-out infinite',
+                        },
+                        '@keyframes flow': {
+                          '0%': { transform: 'translateX(-100%)' },
+                          '50%': { transform: 'translateX(100%)' },
+                          '100%': { transform: 'translateX(-100%)' },
                         },
                       }}
-                    >
-                      {/* Timeline Image */}
+                    />
+
+                    {/* Timeline Items */}
+                    {commits.map((commit, index) => (
                       <Box
+                        key={commit.id}
                         sx={{
-                          width: '120px',
-                          height: '120px',
-                          borderRadius: '50%',
-                          overflow: 'hidden',
-                          border: '4px solid',
-                          borderColor: 'hsl(220, 25%, 18%)',
-                          boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
                           position: 'relative',
-                          mb: 2,
-                          transition: 'all 0.3s ease',
+                          zIndex: 2,
+                          flex: 1,
+                          maxWidth: '180px',
+                          transition: 'transform 0.3s ease',
+                          '&:hover': {
+                            transform: 'translateY(-8px)',
+                          },
                         }}
                       >
-                        <Box
-                          component="img"
-                          src={item.image}
-                          alt={item.name}
-                          sx={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                          }}
-                        />
-                        {/* Status indicator */}
+                        {/* Timeline Image */}
                         <Box
                           sx={{
-                            position: 'absolute',
-                            top: 8,
-                            right: 8,
-                            width: '20px',
-                            height: '20px',
+                            width: '120px',
+                            height: '120px',
                             borderRadius: '50%',
-                            bgcolor: index <= 2 ? 'hsl(140, 70%, 55%)' : 'hsl(220, 25%, 18%)',
-                            border: '2px solid white',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
+                            overflow: 'hidden',
+                            border: '4px solid',
+                            borderColor: 'hsl(220, 25%, 18%)',
+                            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)',
+                            position: 'relative',
+                            mb: 2,
+                            transition: 'all 0.3s ease',
+                            cursor: 'pointer',
                           }}
+                          onClick={() => window.open(commit.url, '_blank')}
                         >
-                          {index <= 2 && (
+                          {commit.author.avatar ? (
+                            <Box
+                              component="img"
+                              src={commit.author.avatar}
+                              alt={commit.author.name}
+                              sx={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                              }}
+                            />
+                          ) : (
+                            <Box
+                              sx={{
+                                width: '100%',
+                                height: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                bgcolor: 'hsl(220, 25%, 18%)',
+                                color: 'white',
+                                fontSize: '2rem',
+                                fontWeight: 700,
+                              }}
+                            >
+                              {commit.author.name.charAt(0).toUpperCase()}
+                            </Box>
+                          )}
+                          {/* Status indicator */}
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              top: 8,
+                              right: 8,
+                              width: '20px',
+                              height: '20px',
+                              borderRadius: '50%',
+                              bgcolor: 'hsl(140, 70%, 55%)',
+                              border: '2px solid white',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
                             <Box
                               sx={{
                                 width: '8px',
@@ -1461,63 +1745,63 @@ const ProjectDetails: React.FC = () => {
                                 bgcolor: 'white',
                               }}
                             />
-                          )}
+                          </Box>
                         </Box>
+
+                        {/* Timeline Info */}
+                        <Typography
+                          variant="h6"
+                          sx={{
+                            fontWeight: 700,
+                            mb: 0.5,
+                            color: 'text.primary',
+                            textAlign: 'center',
+                          }}
+                        >
+                          {commit.author.name}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{
+                            textAlign: 'center',
+                            mb: 1,
+                            lineHeight: 1.4,
+                            maxHeight: '2.8em',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                          }}
+                        >
+                          {commit.message}
+                        </Typography>
+                        <Chip
+                          label={new Date(commit.date).toLocaleDateString()}
+                          size="small"
+                          sx={{
+                            bgcolor: 'hsl(220, 25%, 12%)',
+                            color: 'hsl(220, 15%, 95%)',
+                            fontWeight: 600,
+                            fontSize: '0.75rem',
+                          }}
+                        />
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{
+                            mt: 0.5,
+                            fontFamily: 'monospace',
+                            fontSize: '0.7rem',
+                          }}
+                        >
+                          {commit.sha}
+                        </Typography>
                       </Box>
-
-                      {/* Timeline Info */}
-                      <Typography
-                        variant="h6"
-                        sx={{
-                          fontWeight: 700,
-                          mb: 0.5,
-                          color: 'text.primary',
-                          textAlign: 'center',
-                        }}
-                      >
-                        {item.name}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{
-                          textAlign: 'center',
-                          mb: 1,
-                          lineHeight: 1.4,
-                        }}
-                      >
-                        {item.description}
-                      </Typography>
-                      <Chip
-                        label={item.date}
-                        size="small"
-                        sx={{
-                          bgcolor: 'hsl(220, 25%, 12%)',
-                          color: 'hsl(220, 15%, 95%)',
-                          fontWeight: 600,
-                          fontSize: '0.75rem',
-                        }}
-                      />
-                    </Box>
-                  ))}
-                </Box>
-
-                {/* Timeline Legend */}
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    gap: 3,
-                    mt: 4,
-                    pt: 3,
-                    borderTop: '1px solid hsl(220, 25%, 18%)',
-                  }}
-                >
-                  
-                
-                    
-                </Box>
+                    ))}
+                  </Box>
+                )}
               </CardContent>
             </Card>
           </Box>

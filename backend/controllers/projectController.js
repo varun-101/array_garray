@@ -498,3 +498,67 @@ export const syncGitHubCollaborationStatus = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
+
+// Get recent commits for a project
+export const getProjectCommits = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { accessToken } = req.body;
+    const { per_page = 5 } = req.query;
+
+    if (!accessToken) {
+      return res.status(400).json({ error: "Access token is required" });
+    }
+
+    // Get project details
+    const project = await Projects.findById(id);
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    if (!project.projectLink) {
+      return res.status(400).json({ error: "Project does not have a GitHub repository link" });
+    }
+
+    // Parse repository URL to get owner and repo
+    const { owner, repo } = GitHubService.parseRepoUrl(project.projectLink);
+
+    // Fetch commits from GitHub
+    const githubService = new GitHubService(accessToken);
+    const commits = await githubService.getCommits(owner, repo, { 
+      per_page: parseInt(per_page) 
+    });
+
+    // Transform commits data to match the frontend format
+    const transformedCommits = commits.map(commit => ({
+      id: commit.sha,
+      message: commit.commit.message,
+      author: {
+        name: commit.commit.author.name,
+        email: commit.commit.author.email,
+        avatar: commit.author?.avatar_url || null,
+        username: commit.author?.login || null
+      },
+      date: commit.commit.author.date,
+      url: commit.html_url,
+      sha: commit.sha.substring(0, 7) // Short SHA
+    }));
+
+    res.json({
+      success: true,
+      data: transformedCommits,
+      count: transformedCommits.length,
+      repository: {
+        owner,
+        repo,
+        url: project.projectLink
+      }
+    });
+  } catch (err) {
+    console.error('Get project commits error:', err);
+    return res.status(500).json({ 
+      error: "Failed to fetch commits",
+      details: err.message 
+    });
+  }
+};
