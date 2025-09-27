@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { 
   getUserProfile,
+  updateUserProfile,
   getUserRepos,
   updateUserRepos,
   getUserStats,
@@ -13,6 +14,7 @@ const router = Router();
 
 // User routes
 router.get("/:githubId", getUserProfile);
+router.patch("/:githubId/profile", updateUserProfile);
 router.get("/:githubId/repos", getUserRepos);
 router.put("/:githubId/repos", updateUserRepos);
 router.get("/:githubId/stats", getUserStats);

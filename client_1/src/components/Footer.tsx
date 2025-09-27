@@ -48,7 +48,7 @@ const Footer: React.FC = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <CodeIcon sx={{ fontSize: 28 }} />
               <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                EngiVerse
+                ReGIT
               </Typography>
             </Box>
             <Typography variant="body2" sx={{ opacity: 0.9, mb: 2 }}>
@@ -148,7 +148,7 @@ const Footer: React.FC = () => {
           }}
         >
           <Typography variant="body2" sx={{ opacity: 0.8 }}>
-            © {currentYear} EngiVerse. All rights reserved.
+            © {currentYear} ReGIT. All rights reserved.
           </Typography>
           <Typography variant="body2" sx={{ opacity: 0.8 }}>
             Made with ❤️ by engineering students, for engineering students
