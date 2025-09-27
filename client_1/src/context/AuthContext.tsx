@@ -7,6 +7,10 @@ export interface AuthUser {
   name?: string;
   email?: string;
   skills?: string[];
+  interests?: string[];
+  bio?: string;
+  title?: string;
+  joined?: string;
   avatar?: string;
   githubUrl?: string;
   lastLoginAt?: string;

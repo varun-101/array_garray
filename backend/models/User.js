@@ -92,6 +92,30 @@ const userSchema = new mongoose.Schema({
       type: Number,
       default: 0
     }
+  },
+  // Profile fields from Profile.tsx
+  bio: {
+    type: String,
+    required: false,
+    default: null
+  },
+  skills: [{
+    type: String,
+    required: false
+  }],
+  interests: [{
+    type: String,
+    required: false
+  }],
+  joined: {
+    type: String,
+    required: false,
+    default: null
+  },
+  title: {
+    type: String,
+    required: false,
+    default: 'Aspiring Software Engineer'
   }
 }, {
   timestamps: true
@@ -134,6 +158,17 @@ userSchema.methods.addRepository = function(repoData) {
 userSchema.methods.removeRepository = function(fullName) {
   this.repositories = this.repositories.filter(repo => repo.fullName !== fullName);
   this.stats.totalRepos = this.repositories.length;
+  return this.save();
+};
+
+// Method to update profile information
+userSchema.methods.updateProfile = function(profileData) {
+  const allowedFields = ['name', 'bio', 'skills', 'interests', 'joined', 'title', 'avatar'];
+  allowedFields.forEach(field => {
+    if (profileData[field] !== undefined) {
+      this[field] = profileData[field];
+    }
+  });
   return this.save();
 };
 

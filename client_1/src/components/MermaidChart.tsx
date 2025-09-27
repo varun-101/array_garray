@@ -7,7 +7,7 @@ interface MermaidChartProps {
 }
 
 
-const MermaidChart: React.FC<MermaidChartProps> = ({ code, theme = "default" }) => {
+const MermaidChart: React.FC<MermaidChartProps> = ({ code, theme = "forest" }) => {
     const containerRef = useRef<HTMLDivElement>(null);
   
     useEffect(() => {
@@ -36,7 +36,7 @@ const MermaidChart: React.FC<MermaidChartProps> = ({ code, theme = "default" }) 
       }
     }, [code, theme]);
   
-    return <div ref={containerRef} />;
+    return <div ref={containerRef} className="bg-white" />;
   };
   
   export default MermaidChart;
