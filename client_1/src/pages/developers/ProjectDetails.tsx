@@ -600,6 +600,7 @@ const ProjectDetails: React.FC = () => {
             aiAnalysis={aiAnalysis}
             projectName={project.projectName}
             techStack={project.techStack || []}
+            repoUrl={project.projectLink}
             onImplementationStart={handleImplementationStart}
             onGeneratePlan={handleGeneratePlan}
             onViewExamples={handleViewExamples}

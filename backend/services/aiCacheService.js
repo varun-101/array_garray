@@ -314,6 +314,283 @@ ANALYSIS INSTRUCTIONS:
       throw new Error(`Failed to get repository stats: ${error.message}`);
     }
   }
+
+  /**
+   * Get repository key for caching
+   */
+  getRepoKey(repoUrl) {
+    try {
+      // Extract owner/repo from GitHub URL
+      const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+      if (match) {
+        return `${match[1]}_${match[2]}`.replace(/[^a-zA-Z0-9_]/g, '_');
+      }
+      // Fallback: use base64 encoding of URL
+      return Buffer.from(repoUrl).toString('base64').replace(/[^a-zA-Z0-9]/g, '');
+    } catch (error) {
+      console.warn('Error generating repo key:', error);
+      return 'unknown_repo';
+    }
+  }
+
+  /**
+   * Store implementation record for tracking
+   */
+  async storeImplementationRecord(implementationData) {
+    try {
+      const { repoUrl, projectName, implementation, result, pullRequest, timestamp } = implementationData;
+      
+      // Check if Redis is available
+      if (!this.redis) {
+        console.warn('Redis not available, skipping implementation record storage');
+        return null;
+      }
+      
+      const cacheKey = `implementation:${this.getRepoKey(repoUrl)}:${implementation.id}:${Date.now()}`;
+      
+      const record = {
+        repoUrl,
+        projectName,
+        implementation: {
+          id: implementation.id,
+          title: implementation.title,
+          description: implementation.description,
+          category: implementation.category,
+          priority: implementation.priority,
+          difficulty: implementation.difficulty
+        },
+        result: {
+          success: result.success,
+          branchName: result.branchName,
+          modifiedFiles: result.modifiedFiles,
+          commitHash: result.commitHash,
+          validationResults: result.validationResults
+        },
+        pullRequest: pullRequest ? {
+          success: pullRequest.success,
+          url: pullRequest.url,
+          branchName: pullRequest.branchName,
+          error: pullRequest.error
+        } : null,
+        metadata: {
+          timestamp,
+          storageDate: new Date().toISOString(),
+          version: '1.0'
+        }
+      };
+
+      await this.redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(record));
+      
+      // Also store in a list for easy retrieval
+      const listKey = `implementations:${this.getRepoKey(repoUrl)}`;
+      await this.redis.lpush(listKey, cacheKey);
+      await this.redis.expire(listKey, this.CACHE_TTL);
+      
+      console.log(`Implementation record stored: ${implementation.title}`);
+      return cacheKey;
+      
+    } catch (error) {
+      console.error("Error storing implementation record:", error);
+      throw new Error(`Failed to store implementation record: ${error.message}`);
+    }
+  }
+
+  /**
+   * Store batch implementation record
+   */
+  async storeBatchImplementationRecord(batchData) {
+    try {
+      // Check if Redis is available
+      if (!this.redis) {
+        console.warn('Redis not available, skipping batch implementation record storage');
+        return null;
+      }
+      
+      const { repoUrl, projectName, implementations, results, successCount, failureCount, timestamp } = batchData;
+      const cacheKey = `batch:${this.getRepoKey(repoUrl)}:${Date.now()}`;
+      
+      const record = {
+        repoUrl,
+        projectName,
+        batch: {
+          implementations: implementations.map(impl => ({
+            id: impl.id,
+            title: impl.title,
+            category: impl.category,
+            priority: impl.priority
+          })),
+          results: results.map(result => ({
+            implementation: result.implementation,
+            success: result.success,
+            branchName: result.branchName,
+            error: result.error
+          })),
+          summary: {
+            total: implementations.length,
+            successful: successCount,
+            failed: failureCount,
+            successRate: Math.round((successCount / implementations.length) * 100)
+          }
+        },
+        metadata: {
+          timestamp,
+          storageDate: new Date().toISOString(),
+          version: '1.0'
+        }
+      };
+
+      await this.redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(record));
+      
+      // Store in batch list
+      const listKey = `batches:${this.getRepoKey(repoUrl)}`;
+      await this.redis.lpush(listKey, cacheKey);
+      await this.redis.expire(listKey, this.CACHE_TTL);
+      
+      console.log(`Batch implementation record stored: ${implementations.length} items`);
+      return cacheKey;
+      
+    } catch (error) {
+      console.error("Error storing batch implementation record:", error);
+      throw new Error(`Failed to store batch implementation record: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get implementation history for a repository
+   */
+  async getImplementationHistory(repoUrl, implementationId = null) {
+    try {
+      const listKey = `implementations:${this.getRepoKey(repoUrl)}`;
+      const implementationKeys = await this.redis.lrange(listKey, 0, -1);
+      
+      if (implementationKeys.length === 0) {
+        return [];
+      }
+
+      const implementations = [];
+      for (const key of implementationKeys) {
+        try {
+          const data = await this.redis.get(key);
+          if (data) {
+            const record = JSON.parse(data);
+            
+            // Filter by implementation ID if specified
+            if (implementationId && record.implementation.id !== implementationId) {
+              continue;
+            }
+            
+            implementations.push({
+              id: record.implementation.id,
+              title: record.implementation.title,
+              category: record.implementation.category,
+              priority: record.implementation.priority,
+              success: record.result.success,
+              branchName: record.result.branchName,
+              modifiedFiles: record.result.modifiedFiles,
+              pullRequest: record.pullRequest,
+              timestamp: record.metadata.timestamp,
+              cacheKey: key
+            });
+          }
+        } catch (parseError) {
+          console.warn(`Failed to parse implementation record ${key}:`, parseError);
+        }
+      }
+
+      // Sort by timestamp (newest first)
+      implementations.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      
+      return implementations;
+      
+    } catch (error) {
+      console.error("Error getting implementation history:", error);
+      throw new Error(`Failed to get implementation history: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get batch implementation history
+   */
+  async getBatchHistory(repoUrl) {
+    try {
+      const listKey = `batches:${this.getRepoKey(repoUrl)}`;
+      const batchKeys = await this.redis.lrange(listKey, 0, -1);
+      
+      if (batchKeys.length === 0) {
+        return [];
+      }
+
+      const batches = [];
+      for (const key of batchKeys) {
+        try {
+          const data = await this.redis.get(key);
+          if (data) {
+            const record = JSON.parse(data);
+            batches.push({
+              summary: record.batch.summary,
+              implementations: record.batch.implementations,
+              timestamp: record.metadata.timestamp,
+              cacheKey: key
+            });
+          }
+        } catch (parseError) {
+          console.warn(`Failed to parse batch record ${key}:`, parseError);
+        }
+      }
+
+      // Sort by timestamp (newest first)
+      batches.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      
+      return batches;
+      
+    } catch (error) {
+      console.error("Error getting batch history:", error);
+      throw new Error(`Failed to get batch history: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get implementation statistics for a repository
+   */
+  async getImplementationStats(repoUrl) {
+    try {
+      const implementations = await this.getImplementationHistory(repoUrl);
+      const batches = await this.getBatchHistory(repoUrl);
+      
+      const totalImplementations = implementations.length;
+      const successfulImplementations = implementations.filter(impl => impl.success).length;
+      const failedImplementations = totalImplementations - successfulImplementations;
+      
+      const successRate = totalImplementations > 0 ? 
+        Math.round((successfulImplementations / totalImplementations) * 100) : 0;
+      
+      const categoryStats = implementations.reduce((stats, impl) => {
+        stats[impl.category] = (stats[impl.category] || 0) + 1;
+        return stats;
+      }, {});
+      
+      const priorityStats = implementations.reduce((stats, impl) => {
+        stats[impl.priority] = (stats[impl.priority] || 0) + 1;
+        return stats;
+      }, {});
+
+      return {
+        totalImplementations,
+        successfulImplementations,
+        failedImplementations,
+        successRate,
+        totalBatches: batches.length,
+        categoryBreakdown: categoryStats,
+        priorityBreakdown: priorityStats,
+        recentActivity: implementations.slice(0, 5), // Last 5 implementations
+        lastUpdated: new Date().toISOString()
+      };
+      
+    } catch (error) {
+      console.error("Error getting implementation stats:", error);
+      throw new Error(`Failed to get implementation stats: ${error.message}`);
+    }
+  }
 }
 
 export default AICacheService;

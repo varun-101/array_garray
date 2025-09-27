@@ -9,6 +9,7 @@ import prRoutes from "./routes/prRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
 import aiResponseService from "./services/aiService.js";
 import aiRoutes from "./routes/aiRoutes.js";
+import implementationRoutes from "./routes/implementationRoutes.js";
 // import aiRoutes from "./routes/aiRoutes.js";
 
 dotenv.config();
@@ -26,7 +27,9 @@ app.use("/github", repoRoutes);
 app.use("/github", issueRoutes);
 app.use("/github", prRoutes);
 app.use("/api/projects", projectRoutes);
-app.use("/ai", aiRoutes);app.use("/api/ai", aiRoutes);
+app.use("/ai", aiRoutes);
+app.use("/api/ai", aiRoutes);
+app.use("/api/implementation", implementationRoutes);
 
 
 app.listen(port, () => {

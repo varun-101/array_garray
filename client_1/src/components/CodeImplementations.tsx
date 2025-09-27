@@ -31,6 +31,7 @@ interface CodeImplementationsProps {
   aiAnalysis?: any;
   projectName: string;
   techStack: string[];
+  repoUrl?: string;
   onImplementationStart?: (implementationIds: string[]) => void;
   onGeneratePlan?: (implementationIds: string[]) => void;
   onViewExamples?: (implementationId: string) => void;
@@ -40,11 +41,16 @@ const CodeImplementations: React.FC<CodeImplementationsProps> = ({
   aiAnalysis,
   projectName,
   techStack,
+  repoUrl,
   onImplementationStart,
   onGeneratePlan,
   onViewExamples
 }) => {
   const [selectedImplementations, setSelectedImplementations] = useState<string[]>([]);
+  const [isImplementing, setIsImplementing] = useState(false);
+  const [implementationStatus, setImplementationStatus] = useState<{ [key: string]: 'pending' | 'processing' | 'completed' | 'failed' }>({});
+  
+  const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3000';
 
   // Convert AI recommendations to implementable actions
   const getImplementationSuggestions = () => {
@@ -116,11 +122,57 @@ const CodeImplementations: React.FC<CodeImplementationsProps> = ({
     );
   };
 
-  const handleStartImplementation = (implementationId: string) => {
-    if (onImplementationStart) {
-      onImplementationStart([implementationId]);
-    } else {
-      alert(`Starting implementation for: ${implementationId}`);
+  const handleStartImplementation = async (implementationId: string) => {
+    if (!repoUrl) {
+      alert('Repository URL is required for implementation');
+      return;
+    }
+
+    setImplementationStatus(prev => ({ ...prev, [implementationId]: 'processing' }));
+    
+    try {
+      const { bugFixes, features } = getImplementationSuggestions();
+      const allImplementations = [...bugFixes, ...features];
+      const implementation = allImplementations.find(impl => impl.id === implementationId);
+      
+      if (!implementation) {
+        throw new Error('Implementation not found');
+      }
+
+      const response = await fetch(`${apiBase}/api/implementation/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repoUrl,
+          projectName,
+          techStack,
+          implementation,
+          analysisData: aiAnalysis
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setImplementationStatus(prev => ({ ...prev, [implementationId]: 'completed' }));
+        
+        if (result.pullRequest?.success) {
+          alert(`Implementation successful! Pull request created: ${result.pullRequest.url}`);
+        } else {
+          alert(`Implementation completed! Branch: ${result.codeGeneration.branchName}`);
+        }
+        
+        if (onImplementationStart) {
+          onImplementationStart([implementationId]);
+        }
+      } else {
+        setImplementationStatus(prev => ({ ...prev, [implementationId]: 'failed' }));
+        alert(`Implementation failed: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      setImplementationStatus(prev => ({ ...prev, [implementationId]: 'failed' }));
+      console.error('Implementation failed:', error);
+      alert(`Implementation failed: ${error.message}`);
     }
   };
 
@@ -132,19 +184,134 @@ const CodeImplementations: React.FC<CodeImplementationsProps> = ({
     }
   };
 
-  const handleBatchImplementation = () => {
-    if (onImplementationStart) {
-      onImplementationStart(selectedImplementations);
-    } else {
-      alert(`Starting implementation for ${selectedImplementations.length} selected item(s)`);
+  const handleBatchImplementation = async () => {
+    if (!repoUrl) {
+      alert('Repository URL is required for implementation');
+      return;
+    }
+
+    if (selectedImplementations.length === 0) {
+      alert('Please select at least one implementation');
+      return;
+    }
+
+    setIsImplementing(true);
+    
+    try {
+      const { bugFixes, features } = getImplementationSuggestions();
+      const allImplementations = [...bugFixes, ...features];
+      const implementations = selectedImplementations
+        .map(id => allImplementations.find(impl => impl.id === id))
+        .filter(impl => impl !== undefined);
+
+      const response = await fetch(`${apiBase}/api/implementation/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repoUrl,
+          projectName,
+          techStack,
+          implementations,
+          analysisData: aiAnalysis,
+          createSeparatePRs: true
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        const { successful, failed, total } = result.summary;
+        alert(`Batch implementation completed!\n${successful}/${total} implementations successful\n${failed} failed`);
+        
+        // Show detailed results
+        const successfulPRs = result.results
+          .filter(r => r.success && r.pullRequest?.success)
+          .map(r => r.pullRequest.url);
+          
+        if (successfulPRs.length > 0) {
+          console.log('Created pull requests:', successfulPRs);
+        }
+        
+        if (onImplementationStart) {
+          onImplementationStart(selectedImplementations);
+        }
+        
+        // Clear selection after successful batch
+        setSelectedImplementations([]);
+      } else {
+        alert(`Batch implementation failed: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Batch implementation failed:', error);
+      alert(`Batch implementation failed: ${error.message}`);
+    } finally {
+      setIsImplementing(false);
     }
   };
 
-  const handleGeneratePlan = () => {
-    if (onGeneratePlan) {
-      onGeneratePlan(selectedImplementations);
-    } else {
-      alert('Generating detailed implementation plan...');
+  const handleGeneratePlan = async () => {
+    if (!repoUrl) {
+      alert('Repository URL is required for plan generation');
+      return;
+    }
+
+    if (selectedImplementations.length === 0) {
+      alert('Please select at least one implementation');
+      return;
+    }
+
+    try {
+      const { bugFixes, features } = getImplementationSuggestions();
+      const allImplementations = [...bugFixes, ...features];
+      const implementations = selectedImplementations
+        .map(id => allImplementations.find(impl => impl.id === id))
+        .filter(impl => impl !== undefined);
+
+      const response = await fetch(`${apiBase}/api/implementation/plan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repoUrl,
+          projectName,
+          techStack,
+          implementations,
+          analysisData: aiAnalysis
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        const plan = result.plan;
+        let planSummary = `Implementation Plan for ${plan.summary.totalItems} items:\n\n`;
+        planSummary += `Total Estimated Time: ${plan.summary.estimatedTotalTime}\n`;
+        planSummary += `Average Risk Level: ${plan.summary.averageRiskLevel}/5\n`;
+        planSummary += `Recommended Batch Size: ${plan.summary.recommendedBatchSize}\n\n`;
+        
+        planSummary += 'Recommended Order:\n';
+        plan.summary.suggestedOrder.forEach((item, index) => {
+          planSummary += `${index + 1}. ${item.title}\n`;
+        });
+        
+        if (plan.recommendations.length > 0) {
+          planSummary += '\nRecommendations:\n';
+          plan.recommendations.forEach(rec => {
+            planSummary += `• ${rec}\n`;
+          });
+        }
+        
+        alert(planSummary);
+        console.log('Detailed plan:', plan);
+        
+        if (onGeneratePlan) {
+          onGeneratePlan(selectedImplementations);
+        }
+      } else {
+        alert(`Plan generation failed: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Plan generation failed:', error);
+      alert(`Plan generation failed: ${error.message}`);
     }
   };
 
