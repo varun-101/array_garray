@@ -11,6 +11,7 @@ import aiResponseService from "./services/aiService.js";
 import aiRoutes from "./routes/aiRoutes.js";
 // import aiRoutes from "./routes/aiRoutes.js";
 import mentorRoutes from "./routes/mentorRoutes.js";
+import vercelRoutes from "./routes/vercelRoutes.js"
 dotenv.config();
 
 // Connect to MongoDB
@@ -28,6 +29,7 @@ app.use("/github", prRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/ai", aiRoutes);app.use("/api/ai", aiRoutes);
 app.use("/api/mentors", mentorRoutes);
+app.use("/vercel", vercelRoutes)
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);

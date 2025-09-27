@@ -23,7 +23,7 @@ import {
   Avatar,
   Divider,
   Snackbar,
-} from '@mui/material';
+} from "@mui/material";
 import {
   ArrowBack as ArrowBackIcon,
   GitHub as GitHubIcon,
@@ -31,20 +31,31 @@ import {
   Download as DownloadIcon,
   Favorite as FavoriteIcon,
   Send as SendIcon,
-
-} from '@mui/icons-material';
-import { useAppSelector } from '../../hooks/useRedux';
-import Navigation from '../../components/Navigation';
-import AISummary from '../../components/AISummary';
-import CodeImplementations from '../../components/CodeImplementations';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '../../components/ui/carousel';
-import { useAuth } from '../../context/AuthContext';
+  CloudUpload as CloudUploadIcon,
+} from "@mui/icons-material";
+import { useAppSelector } from "../../hooks/useRedux";
+import Navigation from "../../components/Navigation";
+import AISummary from "../../components/AISummary";
+import CodeImplementations from "../../components/CodeImplementations";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "../../components/ui/carousel";
+import { useAuth } from "../../context/AuthContext";
 import MermaidChart from "../../components/MermaidChart";
 
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
   value: number;
+}
+
+interface DeployInfo{
+  name: string,
+  repoId: string
 }
 
 interface BackendProject {
@@ -110,16 +121,20 @@ const ProjectDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
-  const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackText, setFeedbackText] = useState("");
   const [feedbackRating, setFeedbackRating] = useState<number | null>(null);
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
-    message: '',
-    severity: 'success' as 'success' | 'error' | 'warning' | 'info',
+    message: "",
+    severity: "success" as "success" | "error" | "warning" | "info",
   });
-  
-  const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3000';
+  const [name, setName] = useState("");
+  const [repoId, setRepoId] = useState("");
+  const [url, setUrl] = useState("");
+
+  const apiBase =
+    (import.meta as any).env?.VITE_API_BASE_URL || "http://localhost:3000";
   const [mermaidCode, setMermaidCode] = useState("");
   // const apiBase =
   //   (import.meta as any).env?.VITE_API_BASE_URL || "http://localhost:3000";
@@ -149,7 +164,7 @@ const ProjectDetails: React.FC = () => {
 
         const projectData = await response.json();
         setProject(projectData);
-
+        console.log({project})
         const aiResponse = await fetch(`${apiBase}/ai/generate`, {
           method: "POST", // proper way to send body
           headers: {
@@ -160,9 +175,9 @@ const ProjectDetails: React.FC = () => {
           }),
         });
 
+
         const parsedAiResponse = await aiResponse.json();
         setMermaidCode(parsedAiResponse.message);
-        
       } catch (err) {
         setError("Failed to fetch project");
         console.error("Error fetching project:", err);
@@ -173,6 +188,21 @@ const ProjectDetails: React.FC = () => {
 
     fetchProject();
   }, [id, apiBase]);
+
+
+  useEffect(() => {
+    if(project){
+      console.log({project})
+      setName(project.projectName)
+      setRepoId(project.projectLink)
+    }
+  }, [project])
+
+
+  useEffect(() => {
+    if(url) console.log("deployed url", url)
+  }, [url])
+
 
   if (loading) {
     return (
@@ -231,13 +261,13 @@ const ProjectDetails: React.FC = () => {
     // TODO: Show code examples modal or navigate to examples page
     console.log("Viewing examples for:", implementationId);
     alert(`Showing code examples for: ${implementationId}`);
-  }
+  };
   const handleSubmitFeedback = async () => {
     if (!feedbackText.trim() || !mentor) {
       setSnackbar({
         open: true,
-        message: 'Please provide feedback text',
-        severity: 'error'
+        message: "Please provide feedback text",
+        severity: "error",
       });
       return;
     }
@@ -245,41 +275,91 @@ const ProjectDetails: React.FC = () => {
     setSubmittingFeedback(true);
     try {
       const response = await fetch(`${apiBase}/api/projects/${id}/feedback`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           mentorId: mentor._id,
           feedbackText: feedbackText.trim(),
-          rating: feedbackRating
+          rating: feedbackRating,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit feedback');
+        throw new Error(errorData.error || "Failed to submit feedback");
       }
 
       const updatedProject = await response.json();
       setProject(updatedProject);
-      setFeedbackText('');
+      setFeedbackText("");
       setFeedbackRating(null);
-      
+
       setSnackbar({
         open: true,
-        message: 'Feedback submitted successfully!',
-        severity: 'success'
+        message: "Feedback submitted successfully!",
+        severity: "success",
       });
     } catch (error) {
-      console.error('Error submitting feedback:', error);
+      console.error("Error submitting feedback:", error);
       setSnackbar({
         open: true,
-        message: error instanceof Error ? error.message : 'Failed to submit feedback',
-        severity: 'error'
+        message:
+          error instanceof Error ? error.message : "Failed to submit feedback",
+        severity: "error",
       });
     } finally {
       setSubmittingFeedback(false);
+    }
+  };
+    // Parse repository URL to get owner and repo name
+    function parseRepoUrl(repoUrl: any) {
+      try {
+        const url = new URL(repoUrl);
+        const pathParts = url.pathname.split('/').filter(part => part);
+        
+        if (pathParts.length >= 2) {
+          return {
+            owner: pathParts[0],
+            repo: pathParts[1].replace(/\.git$/, '')
+          };
+        }
+        
+        throw new Error('Invalid repository URL format');
+      } catch (error) {
+        throw new Error(`Failed to parse repository URL: ${error.message}`);
+      }
+    }
+
+  const handleDeploy = async ({name, repoId}: DeployInfo) => {
+    try {
+      console.log("handle deploy")
+      console.log({name, repoId})
+      const {owner, repo} = parseRepoUrl(repoId)
+      console.log(`${owner}/${repo}`);
+      
+      const response = await fetch("https://api.vercel.com/v13/deployments", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${import.meta.env.VITE_VERCEL_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: name,
+          gitSource: {
+            type: "github",
+            repoId: `${owner}/${repo}`,
+            ref: "main", // or branch name
+          },
+        }),
+      });
+
+      const data = await response.json();
+      console.log({data})
+      setUrl(data.message)
+    } catch (err) {
+      console.log(`Something something in handleDeploy ${err}`);
     }
   };
 
@@ -313,12 +393,14 @@ const ProjectDetails: React.FC = () => {
                 {project.projectDescription}
               </Typography>
             </Box>
+
             <Button
               variant="contained"
-              startIcon={<FavoriteIcon />}
+              startIcon={<CloudUploadIcon />}
               sx={{ ml: 2 }}
+              onClick={() => handleDeploy({name, repoId})}
             >
-              Express Interest
+              Deploy
             </Button>
           </Box>
 
@@ -328,9 +410,11 @@ const ProjectDetails: React.FC = () => {
             <Tab label="Roadmap" />
             <Tab label="AI Summary" />
             <Tab label="Code Implementations" />
-            {userType === 'developer' && project?.feedback && project.feedback.length > 0 && (
-              <Tab label={`Feedback (${project.feedback.length})`} />
-            )}
+            {userType === "developer" &&
+              project?.feedback &&
+              project.feedback.length > 0 && (
+                <Tab label={`Feedback (${project.feedback.length})`} />
+              )}
           </Tabs>
         </Box>
 
@@ -741,22 +825,29 @@ const ProjectDetails: React.FC = () => {
             onViewExamples={handleViewExamples}
           />
         </TabPanel>
-    
-    {/* Feedback Tab - Only for Developers */}
-    {userType === 'developer' && (
+
+        {/* Feedback Tab - Only for Developers */}
+        {userType === "developer" && (
           <TabPanel value={tabValue} index={5}>
             <Box sx={{ mb: 4 }}>
               <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
                 Mentor Feedback
               </Typography>
               {project?.feedback && project.feedback.length > 0 ? (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
                   {project.feedback.map((feedback, index) => (
                     <Card key={feedback._id} sx={{ mb: 2 }}>
                       <CardContent>
-                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 2 }}>
-                          <Avatar 
-                            src={feedback.mentor.profilePhotoUrl} 
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: 2,
+                            mb: 2,
+                          }}
+                        >
+                          <Avatar
+                            src={feedback.mentor.profilePhotoUrl}
                             alt={feedback.mentor.name}
                             sx={{ width: 48, height: 48 }}
                           />
@@ -765,14 +856,24 @@ const ProjectDetails: React.FC = () => {
                               {feedback.mentor.name}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                              {feedback.mentor.role} at {feedback.mentor.organization}
+                              {feedback.mentor.role} at{" "}
+                              {feedback.mentor.organization}
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {new Date(feedback.createdAt).toLocaleDateString()}
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              {new Date(
+                                feedback.createdAt
+                              ).toLocaleDateString()}
                             </Typography>
                           </Box>
                           {feedback.rating && (
-                            <Rating value={feedback.rating} readOnly size="small" />
+                            <Rating
+                              value={feedback.rating}
+                              readOnly
+                              size="small"
+                            />
                           )}
                         </Box>
                         <Typography variant="body1">
@@ -785,7 +886,10 @@ const ProjectDetails: React.FC = () => {
               ) : (
                 <Card>
                   <CardContent>
-                    <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                    <Typography
+                      color="text.secondary"
+                      sx={{ textAlign: "center", py: 4 }}
+                    >
                       No feedback received yet
                     </Typography>
                   </CardContent>
@@ -796,7 +900,7 @@ const ProjectDetails: React.FC = () => {
         )}
 
         {/* Mentor Feedback Input Section */}
-        {userType === 'mentor' && mentor && (
+        {userType === "mentor" && mentor && (
           <Box sx={{ mt: 4, mb: 4 }}>
             <Divider sx={{ mb: 3 }} />
             <Card>
@@ -804,10 +908,15 @@ const ProjectDetails: React.FC = () => {
                 <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
                   Provide Feedback
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Share your thoughts and suggestions to help improve this project
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 3 }}
+                >
+                  Share your thoughts and suggestions to help improve this
+                  project
                 </Typography>
-                
+
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="body1" sx={{ mb: 1 }}>
                     Rating (Optional)
@@ -830,36 +939,34 @@ const ProjectDetails: React.FC = () => {
                   sx={{ mb: 3 }}
                 />
 
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
                   <Button
                     variant="contained"
                     startIcon={<SendIcon />}
                     onClick={handleSubmitFeedback}
                     disabled={submittingFeedback || !feedbackText.trim()}
                     sx={{
-                      bgcolor: 'hsl(var(--primary))',
-                      '&:hover': { bgcolor: 'hsl(var(--primary-hover))' }
+                      bgcolor: "hsl(var(--primary))",
+                      "&:hover": { bgcolor: "hsl(var(--primary-hover))" },
                     }}
                   >
-                    {submittingFeedback ? 'Submitting...' : 'Submit Feedback'}
+                    {submittingFeedback ? "Submitting..." : "Submit Feedback"}
                   </Button>
                 </Box>
               </CardContent>
             </Card>
           </Box>
         )}
-
-
       </Container>
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
-        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
       >
         <Alert
-          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
           severity={snackbar.severity}
-          sx={{ width: '100%' }}
+          sx={{ width: "100%" }}
         >
           {snackbar.message}
         </Alert>
