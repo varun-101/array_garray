@@ -447,7 +447,7 @@ const ProjectDetails: React.FC = () => {
 
           <Tabs value={tabValue} onChange={handleTabChange}>
             <Tab label="Overview" />
-            <Tab label="Health Report" />
+            <Tab label="Project Timeline" />
             <Tab label="Roadmap" />
             <Tab label="AI Summary" />
             <Tab label="Code Implementations" />
@@ -782,49 +782,211 @@ const ProjectDetails: React.FC = () => {
           </Box>
         </TabPanel>
 
-        {/* Health Report Tab */}
+        {/* Recent Commits Tab */}
         <TabPanel value={tabValue} index={1}>
           <Box sx={{ mb: 4 }}>
-            <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
-              Project Analysis
+            <Typography variant="h5" sx={{ fontWeight: 600, mb: 3 }}>
+              Recent Commits
             </Typography>
             <Card>
-              <CardContent>
-                <Typography variant="body1" sx={{ mb: 2 }}>
-                  This project appears to be in active development. Here are
-                  some observations:
-                </Typography>
-                <List>
-                  <ListItem>
-                    <ListItemText primary="Project has a clear description and defined tech stack" />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText
-                      primary={`Difficulty level: ${project.difficulty}`}
-                    />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText
-                      primary={`Category: ${
-                        project.category || "Not specified"
-                      }`}
-                    />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText
-                      primary={`Estimated completion time: ${
-                        project.estimatedTime || "Not specified"
-                      }`}
-                    />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText
-                      primary={`Tech stack includes ${
-                        project.techStack?.length || 0
-                      } technologies`}
-                    />
-                  </ListItem>
-                </List>
+              <CardContent sx={{ p: 4 }}>
+                {/* Timeline Container */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    position: 'relative',
+                    width: '100%',
+                    py: 3,
+                    overflow: 'hidden',
+                  }}
+                >
+                  {/* Connecting Line */}
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '10%',
+                      right: '10%',
+                      height: '4px',
+                      background: 'linear-gradient(90deg, hsl(220, 85%, 60%), hsl(260, 75%, 70%), hsl(200, 100%, 65%))',
+                      borderRadius: '2px',
+                      zIndex: 1,
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
+                        animation: 'flow 3s ease-in-out infinite',
+                      },
+                      '@keyframes flow': {
+                        '0%': { transform: 'translateX(-100%)' },
+                        '50%': { transform: 'translateX(100%)' },
+                        '100%': { transform: 'translateX(-100%)' },
+                      },
+                    }}
+                  />
+
+                  {/* Timeline Items */}
+                  {[
+                    {
+                      name: 'Vedant',
+                      image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=150&h=150&fit=crop&crop=center',
+                      description: 'Initial project setup and planning',
+                      date: '21st Oct, 2023',
+                    },
+                    {
+                      name: 'Piyush',
+                      image: 'https://images.unsplash.com/photo-1558655146-d09347e92766?w=150&h=150&fit=crop&crop=center',
+                      description: 'UI/UX design and wireframing',
+                      date: '22nd Oct, 2023',
+                    },
+                    {
+                      name: 'Varun',
+                      image: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=150&h=150&fit=crop&crop=center',
+                      description: 'Core development and implementation',
+                      date: '31st Oct, 2023',
+                    },
+                    {
+                      name: 'Abhisek',
+                      image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=150&h=150&fit=crop&crop=center',
+                      description: 'Quality assurance and bug fixes',
+                      date: '5th Nov, 2023',
+                    },
+                    {
+                      name: 'Ankit',
+                      image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=150&h=150&fit=crop&crop=center',
+                      description: 'Production deployment and launch',
+                      date: '12th Nov, 2023',
+                    },
+                  ].map((item, index) => (
+                    <Box
+                      key={index}
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        position: 'relative',
+                        zIndex: 2,
+                        flex: 1,
+                        maxWidth: '180px',
+                        transition: 'transform 0.3s ease',
+                        '&:hover': {
+                          transform: 'translateY(-8px)',
+                        },
+                      }}
+                    >
+                      {/* Timeline Image */}
+                      <Box
+                        sx={{
+                          width: '120px',
+                          height: '120px',
+                          borderRadius: '50%',
+                          overflow: 'hidden',
+                          border: '4px solid',
+                          borderColor: 'hsl(220, 25%, 18%)',
+                          boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)',
+                          position: 'relative',
+                          mb: 2,
+                          transition: 'all 0.3s ease',
+                        }}
+                      >
+                        <Box
+                          component="img"
+                          src={item.image}
+                          alt={item.name}
+                          sx={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                          }}
+                        />
+                        {/* Status indicator */}
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: 8,
+                            right: 8,
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '50%',
+                            bgcolor: index <= 2 ? 'hsl(140, 70%, 55%)' : 'hsl(220, 25%, 18%)',
+                            border: '2px solid white',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          {index <= 2 && (
+                            <Box
+                              sx={{
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                bgcolor: 'white',
+                              }}
+                            />
+                          )}
+                        </Box>
+                      </Box>
+
+                      {/* Timeline Info */}
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          fontWeight: 700,
+                          mb: 0.5,
+                          color: 'text.primary',
+                          textAlign: 'center',
+                        }}
+                      >
+                        {item.name}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                          textAlign: 'center',
+                          mb: 1,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {item.description}
+                      </Typography>
+                      <Chip
+                        label={item.date}
+                        size="small"
+                        sx={{
+                          bgcolor: 'hsl(220, 25%, 12%)',
+                          color: 'hsl(220, 15%, 95%)',
+                          fontWeight: 600,
+                          fontSize: '0.75rem',
+                        }}
+                      />
+                    </Box>
+                  ))}
+                </Box>
+
+                {/* Timeline Legend */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    gap: 3,
+                    mt: 4,
+                    pt: 3,
+                    borderTop: '1px solid hsl(220, 25%, 18%)',
+                  }}
+                >
+                  
+                
+                    
+                </Box>
               </CardContent>
             </Card>
           </Box>
