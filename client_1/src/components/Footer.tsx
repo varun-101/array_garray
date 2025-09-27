@@ -22,10 +22,11 @@ const Footer: React.FC = () => {
     <Box
       component="footer"
       sx={{
-        bgcolor: 'hsl(var(--primary))',
+        bgcolor: 'hsl(220, 25%, 8%)',
         color: 'white',
         py: 6,
         mt: 8,
+        borderTop: '1px solid hsl(220, 20%, 20%)',
       }}
     >
       <Container maxWidth="lg">

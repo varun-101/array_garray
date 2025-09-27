@@ -78,9 +78,9 @@ const MyProjects: React.FC = () => {
       {/* Header section with gradient background to match hero */}
       <Box
         sx={{
-          background: 'var(--gradient-hero)',
+          background: 'hsl(220, 25%, 8%)',
           py: { xs: 6, md: 10 },
-          borderBottom: '1px solid rgba(255,255,255,0.25)'
+          borderBottom: '1px solid hsl(220, 20%, 20%)'
         }}
       >
         <Container maxWidth="lg">
@@ -96,7 +96,7 @@ const MyProjects: React.FC = () => {
             <Button
               variant="contained"
               startIcon={<RefreshIcon />}
-              sx={{ bgcolor: 'white', color: 'hsl(var(--primary))', '&:hover': { bgcolor: 'rgba(255,255,255,0.95)' } }}
+              sx={{ bgcolor: 'white', color: 'hsl(220, 85%, 55%)', '&:hover': { bgcolor: 'rgba(255,255,255,0.95)' } }}
               onClick={() => window.location.reload()}
             >
               Refresh
