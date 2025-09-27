@@ -1,4 +1,5 @@
-import React from 'react';
+import * as React from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -12,6 +13,7 @@ import {
   LinearProgress,
   IconButton,
   Tooltip,
+  CircularProgress,
 } from '@mui/material';
 import {
   GitHub as GitHubIcon,
@@ -19,8 +21,11 @@ import {
   Favorite as FavoriteIcon,
   Group as GroupIcon,
   Psychology as PsychologyIcon,
+  CheckCircle as CheckCircleIcon,
+  HourglassEmpty as HourglassEmptyIcon,
 } from '@mui/icons-material';
 import { Project } from '../store/slices/projectsSlice';
+import { useAuth } from '../context/AuthContext';
 
 interface ProjectCardProps {
   project: Project;
@@ -34,6 +39,108 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
   onAdopt,
 }) => {
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
+  const [collaborationStatus, setCollaborationStatus] = useState<{
+    isOwner: boolean;
+    collaboration: {
+      status: 'pending' | 'accepted' | 'declined';
+      invitedAt: string;
+      respondedAt?: string;
+    } | null;
+    githubStatus?: {
+      isCollaborator: boolean;
+      permission?: string;
+      role_name?: string;
+      error?: string;
+    } | null;
+  } | null>(null);
+  const [isAdopting, setIsAdopting] = useState(false);
+  const [isLoadingStatus, setIsLoadingStatus] = useState(false);
+
+  const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3000';
+
+  // Fetch collaboration status when component mounts
+  useEffect(() => {
+    const fetchCollaborationStatus = async () => {
+      if (!isAuthenticated || !user?.id) return;
+      
+      setIsLoadingStatus(true);
+      try {
+        // First get the current status
+        const response = await fetch(`${apiBase}/api/projects/${project.id}/collaboration-status?userId=${user.id}`);
+        if (response.ok) {
+          const status = await response.json();
+          setCollaborationStatus(status);
+          
+          // If status is pending, try to sync with GitHub to get latest status
+          if (status.collaboration?.status === 'pending') {
+            try {
+              const syncResponse = await fetch(`${apiBase}/api/projects/${project.id}/sync-github-status?userId=${user.id}`);
+              if (syncResponse.ok) {
+                const syncResult = await syncResponse.json();
+                if (syncResult.updatedStatus) {
+                  // Re-fetch the updated status
+                  const updatedResponse = await fetch(`${apiBase}/api/projects/${project.id}/collaboration-status?userId=${user.id}`);
+                  if (updatedResponse.ok) {
+                    const updatedStatus = await updatedResponse.json();
+                    setCollaborationStatus(updatedStatus);
+                  }
+                }
+              }
+            } catch (syncError) {
+              console.error('Error syncing GitHub status:', syncError);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching collaboration status:', error);
+      } finally {
+        setIsLoadingStatus(false);
+      }
+    };
+
+    fetchCollaborationStatus();
+  }, [project.id, user?.id, isAuthenticated, apiBase]);
+
+  const handleAdoptProject = async () => {
+    if (!isAuthenticated || !user?.id) {
+      // Redirect to login or show login modal
+      return;
+    }
+
+    setIsAdopting(true);
+    try {
+      const response = await fetch(`${apiBase}/api/projects/${project.id}/adopt`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: user.id }),
+      });
+
+      if (response.ok) {
+        const updatedProject = await response.json();
+        // Update collaboration status
+        setCollaborationStatus({
+          isOwner: false,
+          collaboration: {
+            status: 'pending',
+            invitedAt: new Date().toISOString(),
+          }
+        });
+        onAdopt?.(project);
+      } else {
+        const errorData = await response.json();
+        console.error('Error adopting project:', errorData.error);
+        // You could show a toast notification here
+      }
+    } catch (error) {
+      console.error('Error adopting project:', error);
+    } finally {
+      setIsAdopting(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'seeking-contributors':
@@ -232,20 +339,133 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
           </IconButton>
         </Box>
 
-        <Button
-          variant="contained"
-          size="small"
-          onClick={(e) => {
-            e.stopPropagation();
-            onAdopt?.(project);
-          }}
-          sx={{
-            bgcolor: 'hsl(220, 85%, 55%)',
-            '&:hover': { bgcolor: 'hsl(220, 85%, 65%)' },
-          }}
-        >
-          {project.status === 'seeking-contributors' ? 'Adopt Project' : 'Join Project'}
-        </Button>
+        {(() => {
+          // Show different buttons based on collaboration status
+          if (isLoadingStatus) {
+            return (
+              <Button
+                variant="contained"
+                size="small"
+                disabled
+                sx={{
+                  bgcolor: 'hsl(220, 85%, 55%)',
+                  '&:hover': { bgcolor: 'hsl(220, 85%, 65%)' },
+                }}
+              >
+                <CircularProgress size={16} sx={{ mr: 1 }} />
+                Loading...
+              </Button>
+            );
+          }
+
+          if (collaborationStatus?.isOwner) {
+            return (
+              <Button
+                variant="contained"
+                size="small"
+                disabled
+                sx={{
+                  bgcolor: 'hsl(120, 20%, 50%)',
+                  '&:hover': { bgcolor: 'hsl(120, 20%, 50%)' },
+                }}
+              >
+                Your Project
+              </Button>
+            );
+          }
+
+          if (collaborationStatus?.collaboration?.status === 'pending') {
+            return (
+              <Button
+                variant="contained"
+                size="small"
+                disabled
+                startIcon={<HourglassEmptyIcon />}
+                sx={{
+                  bgcolor: 'hsl(45, 90%, 60%)',
+                  '&:hover': { bgcolor: 'hsl(45, 90%, 60%)' },
+                }}
+              >
+                Invitation Pending
+              </Button>
+            );
+          }
+
+          if (collaborationStatus?.collaboration?.status === 'accepted') {
+            return (
+              <Button
+                variant="contained"
+                size="small"
+                disabled
+                startIcon={<CheckCircleIcon />}
+                sx={{
+                  bgcolor: 'hsl(140, 70%, 50%)',
+                  '&:hover': { bgcolor: 'hsl(140, 70%, 50%)' },
+                }}
+              >
+                Collaborator
+              </Button>
+            );
+          }
+
+          if (collaborationStatus?.collaboration?.status === 'declined') {
+            return (
+              <Button
+                variant="contained"
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAdoptProject();
+                }}
+                disabled={isAdopting}
+                sx={{
+                  bgcolor: 'hsl(220, 85%, 55%)',
+                  '&:hover': { bgcolor: 'hsl(220, 85%, 65%)' },
+                }}
+              >
+                {isAdopting ? (
+                  <>
+                    <CircularProgress size={16} sx={{ mr: 1 }} />
+                    Adopting...
+                  </>
+                ) : (
+                  'Adopt Project'
+                )}
+              </Button>
+            );
+          }
+
+          // Default case - no collaboration status or not authenticated
+          return (
+            <Button
+              variant="contained"
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isAuthenticated) {
+                  handleAdoptProject();
+                } else {
+                  // Handle login redirect
+                  window.location.href = `${apiBase}/auth/github`;
+                }
+              }}
+              disabled={isAdopting}
+              sx={{
+                bgcolor: 'hsl(220, 85%, 55%)',
+                '&:hover': { bgcolor: 'hsl(220, 85%, 65%)' },
+              }}
+            >
+              {isAdopting ? (
+                <>
+                  <CircularProgress size={16} sx={{ mr: 1 }} />
+                  Adopting...
+                </>
+              ) : (
+                project.status === 'seeking-contributors' ? 'Adopt Project' : 'Join Project'
+              )}
+            </Button>
+          );
+        })()}
       </CardActions>
     </Card>
   );

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from "react";
+import * as React from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Container,
@@ -33,6 +34,10 @@ import {
   Send as SendIcon,
   CloudUpload as CloudUploadIcon,
   ContentCopy as ContentCopyIcon,
+  Refresh as RefreshIcon,
+  CheckCircle as CheckCircleIcon,
+  HourglassEmpty as HourglassEmptyIcon,
+  Cancel as CancelIcon,
 } from "@mui/icons-material";
 import { useAppSelector } from "../../hooks/useRedux";
 import Navigation from "../../components/Navigation";
@@ -74,13 +79,24 @@ interface BackendProject {
   difficulty: "beginner" | "intermediate" | "advanced";
   estimatedTime: string;
   tags: string[];
+  repoId?: string; // Added repoId field
   user: {
     _id: string;
     name?: string;
     username?: string;
     avatar?: string;
   };
-
+  collaborators?: Array<{
+    user: {
+      _id: string;
+      name?: string;
+      username?: string;
+      avatar?: string;
+    };
+    status: 'pending' | 'accepted' | 'declined';
+    invitedAt: string;
+    respondedAt?: string;
+  }>;
   feedback: Array<{
     _id: string;
     mentor: {
@@ -115,7 +131,7 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const ProjectDetails: React.FC = () => {
-  const { userType, mentor } = useAuth();
+  const { user, userType, mentor } = useAuth();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [tabValue, setTabValue] = useState(0);
@@ -139,6 +155,21 @@ const ProjectDetails: React.FC = () => {
   const [deploying, setDeploying] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [collaborationStatus, setCollaborationStatus] = useState<{
+    isOwner: boolean;
+    collaboration: {
+      status: 'pending' | 'accepted' | 'declined';
+      invitedAt: string;
+      respondedAt?: string;
+    } | null;
+    githubStatus?: {
+      isCollaborator: boolean;
+      permission?: string;
+      role_name?: string;
+      error?: string;
+    } | null;
+  } | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const apiBase =
     (import.meta as any).env?.VITE_API_BASE_URL || "http://localhost:3000";
@@ -158,6 +189,70 @@ const ProjectDetails: React.FC = () => {
         message: 'Failed to copy URL',
         severity: 'error'
       });
+    }
+  };
+
+  const fetchCollaborationStatus = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const response = await fetch(`${apiBase}/api/projects/${id}/collaboration-status?userId=${user.id}`);
+      if (response.ok) {
+        const status = await response.json();
+        setCollaborationStatus(status);
+        
+        // If status is pending, try to sync with GitHub to get latest status
+        if (status.collaboration?.status === 'pending') {
+          try {
+            const syncResponse = await fetch(`${apiBase}/api/projects/${id}/sync-github-status?userId=${user.id}`);
+            if (syncResponse.ok) {
+              const syncResult = await syncResponse.json();
+              if (syncResult.updatedStatus) {
+                // Re-fetch the updated status
+                const updatedResponse = await fetch(`${apiBase}/api/projects/${id}/collaboration-status?userId=${user.id}`);
+                if (updatedResponse.ok) {
+                  const updatedStatus = await updatedResponse.json();
+                  setCollaborationStatus(updatedStatus);
+                }
+              }
+            }
+          } catch (syncError) {
+            console.error('Error syncing GitHub status:', syncError);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching collaboration status:', error);
+    }
+  };
+
+  const refreshProjectData = async () => {
+    setIsRefreshing(true);
+    try {
+      // Refresh project data
+      const response = await fetch(`${apiBase}/api/projects/${id}`);
+      if (response.ok) {
+        const projectData = await response.json();
+        setProject(projectData);
+      }
+      
+      // Refresh collaboration status
+      await fetchCollaborationStatus();
+      
+      setSnackbar({
+        open: true,
+        message: 'Project data refreshed successfully!',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Error refreshing project data:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to refresh project data',
+        severity: 'error'
+      });
+    } finally {
+      setIsRefreshing(false);
     }
   };
   const [mermaidCode, setMermaidCode] = useState("");
@@ -213,6 +308,11 @@ const ProjectDetails: React.FC = () => {
 
     fetchProject();
   }, [id, apiBase]);
+
+  // Fetch collaboration status when component mounts
+  useEffect(() => {
+    fetchCollaborationStatus();
+  }, [id, user?.id, apiBase]);
 
 
   useEffect(() => {
@@ -605,46 +705,66 @@ const ProjectDetails: React.FC = () => {
               </Typography>
             </Box>
 
-            {project?.deployedUrl ? (
-              <Box sx={{ ml: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Box sx={{ ml: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
+              {/* Refresh Button */}
+              <Button
+                variant="outlined"
+                startIcon={isRefreshing ? <CircularProgress size={20} /> : <RefreshIcon />}
+                onClick={refreshProjectData}
+                disabled={isRefreshing}
+                sx={{ 
+                  borderColor: 'primary.main',
+                  color: 'primary.main',
+                  '&:hover': { 
+                    borderColor: 'primary.dark',
+                    bgcolor: 'primary.light'
+                  }
+                }}
+              >
+                {isRefreshing ? 'Refreshing...' : 'Refresh'}
+              </Button>
+
+              {/* Deploy/View Live Site Buttons */}
+              {project?.deployedUrl ? (
+                <>
+                  <Button
+                    variant="contained"
+                    startIcon={<CloudUploadIcon />}
+                    onClick={() => window.open(project.deployedUrl, '_blank')}
+                    sx={{ 
+                      bgcolor: 'success.main',
+                      '&:hover': { bgcolor: 'success.dark' }
+                    }}
+                  >
+                    View Live Site
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<ContentCopyIcon />}
+                    onClick={() => copyToClipboard(project.deployedUrl)}
+                    sx={{ 
+                      borderColor: 'success.main',
+                      color: 'success.main',
+                      '&:hover': { 
+                        borderColor: 'success.dark',
+                        bgcolor: 'success.light'
+                      }
+                    }}
+                  >
+                    Copy URL
+                  </Button>
+                </>
+              ) : (
                 <Button
                   variant="contained"
-                  startIcon={<CloudUploadIcon />}
-                  onClick={() => window.open(project.deployedUrl, '_blank')}
-                  sx={{ 
-                    bgcolor: 'success.main',
-                    '&:hover': { bgcolor: 'success.dark' }
-                  }}
+                  startIcon={deploying ? <CircularProgress size={20} /> : <CloudUploadIcon />}
+                  onClick={() => handleDeploy({name, repoId})}
+                  disabled={deploying || !name || !repoId}
                 >
-                  View Live Site
+                  {deploying ? 'Deploying...' : 'Deploy'}
                 </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<ContentCopyIcon />}
-                  onClick={() => copyToClipboard(project.deployedUrl)}
-                  sx={{ 
-                    borderColor: 'success.main',
-                    color: 'success.main',
-                    '&:hover': { 
-                      borderColor: 'success.dark',
-                      bgcolor: 'success.light'
-                    }
-                  }}
-                >
-                  Copy URL
-                </Button>
-              </Box>
-            ) : (
-              <Button
-                variant="contained"
-                startIcon={deploying ? <CircularProgress size={20} /> : <CloudUploadIcon />}
-                sx={{ ml: 2 }}
-                onClick={() => handleDeploy({name, repoId})}
-                disabled={deploying || !name || !repoId}
-              >
-                {deploying ? 'Deploying...' : 'Deploy'}
-              </Button>
-            )}
+              )}
+            </Box>
           </Box>
 
           {/* Celebration Card for New Deployment */}
@@ -725,6 +845,132 @@ const ProjectDetails: React.FC = () => {
                       ✕
                     </IconButton>
                   </Box>
+                </CardContent>
+              </Card>
+            </Box>
+          )}
+
+          {/* Collaboration Status Card */}
+          {userType === "developer" && collaborationStatus && (
+            <Box sx={{ mb: 3 }}>
+              <Card sx={{ 
+                bgcolor: collaborationStatus.isOwner ? 'info.light' : 
+                         collaborationStatus.collaboration?.status === 'accepted' ? 'success.light' :
+                         collaborationStatus.collaboration?.status === 'pending' ? 'warning.light' :
+                         'grey.100',
+                border: '2px solid',
+                borderColor: collaborationStatus.isOwner ? 'info.main' : 
+                             collaborationStatus.collaboration?.status === 'accepted' ? 'success.main' :
+                             collaborationStatus.collaboration?.status === 'pending' ? 'warning.main' :
+                             'grey.300'
+              }}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    {collaborationStatus.isOwner ? (
+                      <>
+                        <CheckCircleIcon sx={{ fontSize: '2rem', color: 'info.main' }} />
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                            Project Owner
+                          </Typography>
+                          <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                            You are the owner of this project. You can manage collaborators and project settings.
+                          </Typography>
+                        </Box>
+                      </>
+                    ) : collaborationStatus.collaboration?.status === 'accepted' ? (
+                      <>
+                        <CheckCircleIcon sx={{ fontSize: '2rem', color: 'success.main' }} />
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                            Active Collaborator
+                          </Typography>
+                          <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                            You are an active collaborator on this project. You can contribute to the codebase and participate in discussions.
+                          </Typography>
+                        </Box>
+                      </>
+                    ) : collaborationStatus.collaboration?.status === 'pending' ? (
+                      <>
+                        <HourglassEmptyIcon sx={{ fontSize: '2rem', color: 'warning.main' }} />
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                            Invitation Pending
+                          </Typography>
+                          <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                            Your collaboration request is pending approval from the project owner. Check back later or contact the owner directly.
+                          </Typography>
+                          <Typography variant="caption" sx={{ opacity: 0.8, mt: 1, display: 'block' }}>
+                            Requested on: {new Date(collaborationStatus.collaboration.invitedAt).toLocaleDateString()}
+                          </Typography>
+                        </Box>
+                      </>
+                    ) : collaborationStatus.collaboration?.status === 'declined' ? (
+                      <>
+                        <CancelIcon sx={{ fontSize: '2rem', color: 'error.main' }} />
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                            Invitation Declined
+                          </Typography>
+                          <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                            Your collaboration request was declined. You can try requesting again or contact the project owner for more information.
+                          </Typography>
+                        </Box>
+                      </>
+                    ) : (
+                      <>
+                        <Box sx={{ 
+                          width: '2rem', 
+                          height: '2rem', 
+                          borderRadius: '50%', 
+                          bgcolor: 'grey.400',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <Typography variant="caption" sx={{ color: 'white', fontWeight: 600 }}>
+                            ?
+                          </Typography>
+                        </Box>
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                            Not a Collaborator
+                          </Typography>
+                          <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                            You are not currently a collaborator on this project. Use the "Adopt Project" button to request collaboration.
+                          </Typography>
+                        </Box>
+                      </>
+                    )}
+                  </Box>
+                  
+                  {/* GitHub Status Indicator */}
+                  {collaborationStatus.githubStatus && !collaborationStatus.isOwner && (
+                    <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(0, 0, 0, 0.1)', borderRadius: 1 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                        GitHub Repository Status:
+                      </Typography>
+                      {collaborationStatus.githubStatus.error ? (
+                        <Typography variant="body2" color="error">
+                          Error checking GitHub status: {collaborationStatus.githubStatus.error}
+                        </Typography>
+                      ) : collaborationStatus.githubStatus.isCollaborator ? (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <CheckCircleIcon sx={{ color: 'success.main', fontSize: 16 }} />
+                          <Typography variant="body2" color="success.main">
+                            You are a collaborator on the GitHub repository
+                          </Typography>
+                        </Box>
+                      ) : (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <CancelIcon sx={{ color: 'warning.main', fontSize: 16 }} />
+                          <Typography variant="body2" color="warning.main">
+                            You are not a collaborator on the GitHub repository
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  )}
                 </CardContent>
               </Card>
             </Box>

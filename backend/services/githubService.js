@@ -271,6 +271,141 @@ class GitHubService {
     }
   }
 
+  // Add a repository collaborator
+  async addCollaborator(owner, repo, username, permission = 'push') {
+    try {
+      const response = await axios.put(`${this.baseURL}/repos/${owner}/${repo}/collaborators/${username}`, {
+        permission: permission
+      }, {
+        headers: {
+          ...this.headers,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28'
+        }
+      });
+      
+      return {
+        status: response.status,
+        data: response.data,
+        message: response.status === 201 ? 'Invitation sent successfully' : 'Collaborator added successfully'
+      };
+    } catch (error) {
+      if (error.response?.status === 422) {
+        throw new Error(`Validation failed: ${error.response.data.message || 'Invalid request'}`);
+      } else if (error.response?.status === 403) {
+        throw new Error('Forbidden: Insufficient permissions to add collaborator');
+      } else if (error.response?.status === 404) {
+        throw new Error('Repository or user not found');
+      }
+      throw new Error(`Failed to add collaborator: ${error.response?.data?.message || error.message}`);
+    }
+  }
+
+  // Check if a user is a repository collaborator
+  async checkCollaborator(owner, repo, username) {
+    try {
+      const response = await axios.get(`${this.baseURL}/repos/${owner}/${repo}/collaborators/${username}`, {
+        headers: {
+          ...this.headers,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28'
+        }
+      });
+      
+      return {
+        isCollaborator: true,
+        permission: response.data.permission,
+        role_name: response.data.role_name
+      };
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return {
+          isCollaborator: false,
+          permission: null,
+          role_name: null
+        };
+      }
+      throw new Error(`Failed to check collaborator status: ${error.response?.data?.message || error.message}`);
+    }
+  }
+
+  // Remove a repository collaborator
+  async removeCollaborator(owner, repo, username) {
+    try {
+      const response = await axios.delete(`${this.baseURL}/repos/${owner}/${repo}/collaborators/${username}`, {
+        headers: {
+          ...this.headers,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28'
+        }
+      });
+      
+      return {
+        status: response.status,
+        message: 'Collaborator removed successfully'
+      };
+    } catch (error) {
+      if (error.response?.status === 404) {
+        throw new Error('Collaborator not found');
+      } else if (error.response?.status === 403) {
+        throw new Error('Forbidden: Insufficient permissions to remove collaborator');
+      }
+      throw new Error(`Failed to remove collaborator: ${error.response?.data?.message || error.message}`);
+    }
+  }
+
+  // Get all repository collaborators
+  async getCollaborators(owner, repo) {
+    try {
+      const response = await axios.get(`${this.baseURL}/repos/${owner}/${repo}/collaborators`, {
+        headers: {
+          ...this.headers,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28'
+        },
+        params: {
+          per_page: 100
+        }
+      });
+      
+      return response.data.map(collaborator => ({
+        id: collaborator.id,
+        login: collaborator.login,
+        avatar_url: collaborator.avatar_url,
+        html_url: collaborator.html_url,
+        type: collaborator.type,
+        site_admin: collaborator.site_admin,
+        permissions: collaborator.permissions
+      }));
+    } catch (error) {
+      throw new Error(`Failed to fetch collaborators: ${error.response?.data?.message || error.message}`);
+    }
+  }
+
+  // Get repository invitations
+  async getInvitations(owner, repo) {
+    try {
+      const response = await axios.get(`${this.baseURL}/repos/${owner}/${repo}/invitations`, {
+        headers: {
+          ...this.headers,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28'
+        }
+      });
+      
+      return response.data.map(invitation => ({
+        id: invitation.id,
+        login: invitation.invitee.login,
+        email: invitation.invitee.email,
+        permissions: invitation.permissions,
+        created_at: invitation.created_at,
+        url: invitation.html_url
+      }));
+    } catch (error) {
+      throw new Error(`Failed to fetch invitations: ${error.response?.data?.message || error.message}`);
+    }
+  }
+
   // Parse repository URL to get owner and repo name
   static parseRepoUrl(repoUrl) {
     try {

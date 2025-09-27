@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useMemo } from 'react';
+import * as React from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   Container,
   Typography,
@@ -89,21 +90,25 @@ const ProjectGrid: React.FC = () => {
           title: p.projectName,
           description: p.projectDescription,
           techStack: Array.isArray(p.techStack) ? p.techStack : [],
-          category: 'Web Development',
-          status: 'seeking-contributors',
+          category: p.category || 'Web Development',
+          status: p.collaborators && p.collaborators.length > 0 ? 'in-progress' : 'seeking-contributors',
           author: {
             name: p.user?.name || p.user?.username || 'Unknown',
             avatar: p.user?.avatar || '',
             university: '',
           },
-          contributors: 0,
+          contributors: p.collaborators ? p.collaborators.filter((c: any) => c.status === 'accepted').length + 1 : 1, // +1 for owner
           lastUpdated: p.updatedAt || p.createdAt,
           githubUrl: p.projectLink,
-          tags: [],
-          difficulty: 'beginner',
-          estimatedTime: '1-2 weeks',
-          aiHealthScore: 80,
+          tags: Array.isArray(p.tags) ? p.tags : [],
+          difficulty: p.difficulty || 'beginner',
+          estimatedTime: p.estimatedTime || '1-2 weeks',
+          aiHealthScore: 80, // This could be calculated based on project completeness
           projectImgUrl: p.projectImgUrl || undefined,
+          projectImgUrls: Array.isArray(p.projectImgUrls) ? p.projectImgUrls : [],
+          projectVideoUrls: Array.isArray(p.projectVideoUrls) ? p.projectVideoUrls : [],
+          demoUrl: p.demoUrl,
+          deployedUrl: p.deployedUrl,
         }));
         console.log(mapped);
         dispatch(setProjects(mapped));
@@ -117,7 +122,8 @@ const ProjectGrid: React.FC = () => {
 
   const handleProjectAdopt = (project: any) => {
     console.log('Adopting project:', project.title);
-    // TODO: Implement project adoption logic
+    // The adoption logic is now handled in the ProjectCard component
+    // This function can be used for additional actions if needed
   };
 
   const handleProjectView = (project: any) => {
