@@ -13,6 +13,7 @@ const projectsSchema = new mongoose.Schema(
     projectImgUrls: [{ type: String, trim: true }],
     projectVideoUrls: [{ type: String, trim: true }],
     demoUrl: { type: String, required: false, default: null },
+    deployedUrl: { type: String, required: false, default: null },
     category: { type: String, required: false, default: '' },
     difficulty: { type: String, enum: ['beginner','intermediate','advanced'], default: 'beginner' },
     estimatedTime: { type: String, required: false, default: '' },

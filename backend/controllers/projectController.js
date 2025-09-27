@@ -1,5 +1,6 @@
 import DatabaseService from "../services/databaseService.js";
 import Projects from "../models/Projects.js";
+import Repository from "../models/Repository.js";
 
 export const uploadProject = async (req, res) => {
   try {
@@ -95,8 +96,17 @@ export const getProjectById = async (req, res) => {
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
+    // console.log(project)
+    // Find the repository by matching the project's projectLink with the Repository's url field
+    // (Assuming you have imported the Repository model at the top of this file)
+    // Example: import Repository from "../models/Repository.js";
+    const repo = await Repository.findOne({ url: project.projectLink });
 
-    return res.status(200).json(project);
+    // Return the project as a plain object, and add repoId (or null if not found)
+    const projectObj = project.toObject();
+    projectObj.repoId = repo ? repo.githubId : null;
+
+    return res.status(200).json(projectObj);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -134,6 +144,37 @@ export const submitFeedback = async (req, res) => {
     await project.save();
 
     // Return updated project with populated feedback
+    const updatedProject = await Projects.findById(id)
+      .populate("user", "name avatar username")
+      .populate("feedback.mentor", "name organization role profilePhotoUrl");
+
+    return res.status(200).json(updatedProject);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+export const updateDeployedUrl = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { deployedUrl } = req.body;
+
+    if (!id || !deployedUrl) {
+      return res.status(400).json({ 
+        error: "Project ID and deployed URL are required" 
+      });
+    }
+
+    const project = await Projects.findById(id);
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    // Update the deployed URL
+    project.deployedUrl = deployedUrl;
+    await project.save();
+
+    // Return updated project with populated fields
     const updatedProject = await Projects.findById(id)
       .populate("user", "name avatar username")
       .populate("feedback.mentor", "name organization role profilePhotoUrl");

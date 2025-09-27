@@ -32,6 +32,7 @@ import {
   Favorite as FavoriteIcon,
   Send as SendIcon,
   CloudUpload as CloudUploadIcon,
+  ContentCopy as ContentCopyIcon,
 } from "@mui/icons-material";
 import { useAppSelector } from "../../hooks/useRedux";
 import Navigation from "../../components/Navigation";
@@ -68,6 +69,7 @@ interface BackendProject {
   projectImgUrls?: string[];
   projectVideoUrls?: string[];
   demoUrl?: string;
+  deployedUrl?: string;
   category: string;
   difficulty: "beginner" | "intermediate" | "advanced";
   estimatedTime: string;
@@ -134,9 +136,30 @@ const ProjectDetails: React.FC = () => {
   const [name, setName] = useState("");
   const [repoId, setRepoId] = useState("");
   const [url, setUrl] = useState("");
+  const [deploying, setDeploying] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const apiBase =
     (import.meta as any).env?.VITE_API_BASE_URL || "http://localhost:3000";
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setSnackbar({
+        open: true,
+        message: 'URL copied to clipboard!',
+        severity: 'success'
+      });
+    } catch (err) {
+      console.error('Failed to copy: ', err);
+      setSnackbar({
+        open: true,
+        message: 'Failed to copy URL',
+        severity: 'error'
+      });
+    }
+  };
   const [mermaidCode, setMermaidCode] = useState("");
   // const apiBase =
   //   (import.meta as any).env?.VITE_API_BASE_URL || "http://localhost:3000";
@@ -196,9 +219,19 @@ const ProjectDetails: React.FC = () => {
     if(project){
       console.log({project})
       setName(project.projectName)
-      setRepoId(project.projectLink)
+      setRepoId(project.projectLink) // This is the GitHub URL, not repoId
+      // Initialize URL from project data if it exists
+      if (project.deployedUrl) {
+        setUrl(project.deployedUrl)
+        // Only hide celebration on initial load, not when project is updated after deployment
+        if (isInitialLoad) {
+          setShowCelebration(false)
+        }
+      }
+      // Mark that initial load is complete
+      setIsInitialLoad(false)
     }
-  }, [project])
+  }, [project, isInitialLoad])
 
 
   useEffect(() => {
@@ -375,12 +408,25 @@ const ProjectDetails: React.FC = () => {
 
   const handleDeploy = async ({name, repoId}: DeployInfo) => {
     try {
+      setDeploying(true);
+      console.log(project)
+      
       console.log("handle deploy")
       console.log({name, repoId})
-      const {owner, repo} = parseRepoUrl(repoId)
-      console.log(`${owner}/${repo}`);
       
-      const response = await fetch("https://api.vercel.com/v13/deployments", {
+      // Validate inputs
+      if (!name || !repoId) {
+        throw new Error('Project name and repository URL are required');
+      }
+      
+      if (!import.meta.env.VITE_VERCEL_TOKEN) {
+        throw new Error('Vercel token is not configured');
+      }
+      
+      const {owner, repo} = parseRepoUrl(repoId)
+      console.log(project.projectLink)
+      
+      const response = await fetch("https://api.vercel.com/v13/deployments?skipAutoDetectionConfirmation=1", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${import.meta.env.VITE_VERCEL_TOKEN}`,
@@ -390,17 +436,141 @@ const ProjectDetails: React.FC = () => {
           name: name,
           gitSource: {
             type: "github",
-            repoId: `${owner}/${repo}`,
+            repoId: project?.repoId,
             ref: "main", // or branch name
           },
         }),
       });
 
       const data = await response.json();
-      console.log({data})
-      setUrl(data.message)
+      console.log('Vercel API Response:', data);
+      
+      if (!response.ok) {
+        throw new Error(data.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      if (data.error) {
+        throw new Error(data.error.message || 'Deployment failed');
+      }
+      
+      // Extract the deployment URL from various possible response formats
+      let deploymentUrl = data.url || data.deploymentUrl || data.deployment?.url || data.deployment?.deploymentUrl;
+      console.log('Extracted deployment URL:', deploymentUrl);
+      
+      // Ensure the URL has a protocol
+      if (deploymentUrl && !deploymentUrl.startsWith('http')) {
+        deploymentUrl = `https://${deploymentUrl}`;
+        console.log('Added protocol to URL:', deploymentUrl);
+      }
+      
+      if (deploymentUrl && deploymentUrl.startsWith('http')) {
+        // Save the deployed URL to the database
+        try {
+          console.log('Saving deployed URL to database:', deploymentUrl);
+          const updateResponse = await fetch(`${apiBase}/api/projects/${id}/deployed-url`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              deployedUrl: deploymentUrl
+            }),
+          });
+
+          console.log('Database update response status:', updateResponse.status);
+
+          if (updateResponse.ok) {
+            const updatedProject = await updateResponse.json();
+            console.log('Updated project from database:', updatedProject);
+            setProject(updatedProject);
+            setUrl(deploymentUrl);
+            
+            // Show celebration for new deployment
+            setShowCelebration(true);
+            
+            setSnackbar({
+              open: true,
+              message: 'Deployment completed and saved successfully!',
+              severity: 'success'
+            });
+          } else {
+            const errorData = await updateResponse.json();
+            console.error('Database update failed:', errorData);
+            // Update the project state locally even if database update fails
+            setProject(prevProject => prevProject ? { ...prevProject, deployedUrl: deploymentUrl } : null);
+            setUrl(deploymentUrl);
+            
+            // Show celebration even if database update fails
+            setShowCelebration(true);
+            
+            setSnackbar({
+              open: true,
+              message: 'Deployment completed but failed to save URL to database',
+              severity: 'warning'
+            });
+          }
+        } catch (dbError) {
+          console.error('Error saving deployed URL to database:', dbError);
+          // Update the project state locally even if database update fails
+          setProject(prevProject => prevProject ? { ...prevProject, deployedUrl: deploymentUrl } : null);
+          setUrl(deploymentUrl);
+          
+          // Show celebration even if database update fails
+          setShowCelebration(true);
+          
+          setSnackbar({
+            open: true,
+            message: 'Deployment completed but failed to save URL to database',
+            severity: 'warning'
+          });
+        }
+      } else {
+        // Even if we can't save to database, show the URL in UI
+        if (deploymentUrl) {
+          setUrl(deploymentUrl);
+          // Try to save to database anyway
+          try {
+            const updateResponse = await fetch(`${apiBase}/api/projects/${id}/deployed-url`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                deployedUrl: deploymentUrl
+              }),
+            });
+            if (updateResponse.ok) {
+              const updatedProject = await updateResponse.json();
+              setProject(updatedProject);
+              setShowCelebration(true);
+            } else {
+              // Update the project state locally even if database update fails
+              setProject(prevProject => prevProject ? { ...prevProject, deployedUrl: deploymentUrl } : null);
+              setShowCelebration(true);
+            }
+          } catch (dbError) {
+            console.error('Error saving deployed URL to database:', dbError);
+            // Update the project state locally even if database update fails
+            setProject(prevProject => prevProject ? { ...prevProject, deployedUrl: deploymentUrl } : null);
+            setShowCelebration(true);
+          }
+        }
+        
+        setSnackbar({
+          open: true,
+          message: deploymentUrl ? 'Deployment completed successfully!' : 'Deployment initiated successfully!',
+          severity: 'success'
+        });
+      }
     } catch (err) {
-      console.log(`Something something in handleDeploy ${err}`);
+      console.log(`Error in handleDeploy: ${err}`);
+      setSnackbar({
+        open: true,
+        message: `Deployment failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        severity: 'error'
+      });
+    } finally {
+      setDeploying(false);
     }
   };
 
@@ -435,15 +605,130 @@ const ProjectDetails: React.FC = () => {
               </Typography>
             </Box>
 
-            <Button
-              variant="contained"
-              startIcon={<CloudUploadIcon />}
-              sx={{ ml: 2 }}
-              onClick={() => handleDeploy({name, repoId})}
-            >
-              Deploy
-            </Button>
+            {project?.deployedUrl ? (
+              <Box sx={{ ml: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
+                <Button
+                  variant="contained"
+                  startIcon={<CloudUploadIcon />}
+                  onClick={() => window.open(project.deployedUrl, '_blank')}
+                  sx={{ 
+                    bgcolor: 'success.main',
+                    '&:hover': { bgcolor: 'success.dark' }
+                  }}
+                >
+                  View Live Site
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<ContentCopyIcon />}
+                  onClick={() => copyToClipboard(project.deployedUrl)}
+                  sx={{ 
+                    borderColor: 'success.main',
+                    color: 'success.main',
+                    '&:hover': { 
+                      borderColor: 'success.dark',
+                      bgcolor: 'success.light'
+                    }
+                  }}
+                >
+                  Copy URL
+                </Button>
+              </Box>
+            ) : (
+              <Button
+                variant="contained"
+                startIcon={deploying ? <CircularProgress size={20} /> : <CloudUploadIcon />}
+                sx={{ ml: 2 }}
+                onClick={() => handleDeploy({name, repoId})}
+                disabled={deploying || !name || !repoId}
+              >
+                {deploying ? 'Deploying...' : 'Deploy'}
+              </Button>
+            )}
           </Box>
+
+          {/* Celebration Card for New Deployment */}
+          {showCelebration && (
+            <Box sx={{ mb: 3 }}>
+              <Card sx={{ 
+                bgcolor: 'success.light', 
+                color: 'success.contrastText',
+                border: '2px solid',
+                borderColor: 'success.main',
+                boxShadow: '0 4px 20px rgba(76, 175, 80, 0.3)'
+              }}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box sx={{ 
+                      fontSize: '3rem',
+                      animation: 'bounce 1s infinite',
+                      '@keyframes bounce': {
+                        '0%, 20%, 50%, 80%, 100%': { transform: 'translateY(0)' },
+                        '40%': { transform: 'translateY(-10px)' },
+                        '60%': { transform: 'translateY(-5px)' }
+                      }
+                    }}>
+                      🎉
+                    </Box>
+                    <Box sx={{ flexGrow: 1 }}>
+                      <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+                        Congratulations! 🚀
+                      </Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+                        Your project has been deployed successfully!
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 2, opacity: 0.9 }}>
+                        Your application is now live and accessible to the world. Share it with others and start getting feedback!
+                      </Typography>
+                      {project?.deployedUrl && (
+                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <Button
+                            variant="contained"
+                            color="inherit"
+                            onClick={() => window.open(project.deployedUrl, '_blank')}
+                            sx={{ 
+                              bgcolor: 'white', 
+                              color: 'success.main',
+                              fontWeight: 600,
+                              '&:hover': { bgcolor: 'grey.100' }
+                            }}
+                          >
+                            🌐 View Live Site
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="inherit"
+                            startIcon={<ContentCopyIcon />}
+                            onClick={() => copyToClipboard(project.deployedUrl)}
+                            sx={{ 
+                              borderColor: 'white',
+                              color: 'white',
+                              fontWeight: 600,
+                              '&:hover': { 
+                                borderColor: 'white',
+                                bgcolor: 'rgba(255, 255, 255, 0.1)'
+                              }
+                            }}
+                          >
+                            Copy URL
+                          </Button>
+                        </Box>
+                      )}
+                    </Box>
+                    <IconButton
+                      onClick={() => setShowCelebration(false)}
+                      sx={{ 
+                        color: 'white',
+                        '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.1)' }
+                      }}
+                    >
+                      ✕
+                    </IconButton>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Box>
+          )}
 
           <Tabs value={tabValue} onChange={handleTabChange}>
             <Tab label="Overview" />
